@@ -10,6 +10,7 @@ test("contains the student report and upload workflow", async () => {
 
   assert.match(page, /DYB SCORE/);
   assert.match(page, /성적표 업로드/);
+  assert.doesNotMatch(page, /성적 흐름을 한눈에|상담은 더 정확하게/);
   assert.match(page, /시험별 성적 변화/);
   assert.match(page, /데이터 없음/);
   assert.match(page, /DOMParser/);

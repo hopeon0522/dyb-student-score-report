@@ -97,7 +97,7 @@ export default function Home() {
       </header>
 
       <section className="hero">
-        <div><p className="eyebrow">STUDENT PERFORMANCE</p><h1>성적 흐름을 한눈에,<br/><em>상담은 더 정확하게.</em></h1><p>시험별 영어 영역 점수와 석차를 연결해 학생의 변화를 빠르게 확인하세요.</p></div>
+        <div><p className="eyebrow">STUDENT PERFORMANCE</p><p>시험별 영어 영역 점수와 석차를 연결해 학생의 변화를 빠르게 확인하세요.</p></div>
         <div className="hero-stats"><div><b>{students.length}</b><span>등록 학생</span></div><div><b>{exams.length}</b><span>누적 시험</span></div><div><b>{missingCount}</b><span>데이터 공백 학생</span></div></div>
       </section>
 
