@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Score = {
   name: string;
@@ -18,6 +18,7 @@ type Score = {
 type Exam = { id: string; label: string; filename: string; period: string; rows: Score[] };
 
 const initialExams: Exam[] = [];
+const storageKey = "dyb-score-report-data-v1";
 
 const getNumber = (value: string) => Number((value || "0").split("/")[0].replace(/,/g, ""));
 
@@ -56,7 +57,32 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState("");
   const [query, setQuery] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const restoreRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const restored = JSON.parse(saved) as Exam[];
+        if (Array.isArray(restored)) {
+          setExams(restored);
+          setSelectedId(restored[0]?.rows[0]?.studentId || "");
+        }
+      }
+    } catch {
+      setUploadMessage("저장된 데이터를 불러오지 못했습니다.");
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(storageKey, JSON.stringify(exams));
+  }, [exams, hydrated]);
 
   const students = useMemo(() => {
     const map = new Map<string, Score>();
@@ -88,20 +114,67 @@ export default function Home() {
     event.target.value = "";
   }
 
+  function removeExam(id: string) {
+    setExams((items) => items.filter((exam) => exam.id !== id));
+    setUploadMessage("선택한 성적표를 삭제했습니다.");
+  }
+
+  function clearData() {
+    if (!window.confirm("등록한 모든 시험과 학생 데이터를 삭제할까요?")) return;
+    setExams([]);
+    setSelectedId("");
+    setUploadMessage("모든 홈페이지 데이터를 초기화했습니다.");
+    setSettingsOpen(false);
+  }
+
+  function downloadBackup() {
+    const backup = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), exams }, null, 2);
+    const url = URL.createObjectURL(new Blob([backup], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `dyb-score-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setUploadMessage("홈페이지 데이터 백업을 저장했습니다.");
+  }
+
+  async function restoreBackup(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text()) as { exams?: Exam[] } | Exam[];
+      const restored = Array.isArray(data) ? data : data.exams;
+      if (!Array.isArray(restored) || restored.some((exam) => !exam.id || !Array.isArray(exam.rows))) throw new Error();
+      setExams(restored);
+      setSelectedId(restored[0]?.rows[0]?.studentId || "");
+      setUploadMessage(`${restored.length}개 시험 데이터를 복원했습니다.`);
+      setSettingsOpen(false);
+    } catch {
+      setUploadMessage("올바른 DYB 백업 파일이 아닙니다.");
+    }
+    event.target.value = "";
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">D</span><div><strong>DYB SCORE</strong><small>학생 성장 리포트</small></div></div>
-        <div className="header-actions"><span className="saved">● 모든 변경사항 저장됨</span><button className="upload-button" onClick={() => fileRef.current?.click()}>＋ 성적표 업로드</button></div>
+        <div className="header-stats"><div><b>{students.length}</b><span>등록 학생</span></div><div><b>{exams.length}</b><span>누적 시험</span></div><div><b>{missingCount}</b><span>데이터 공백 학생</span></div></div>
+        <div className="header-actions"><span className="saved">● 로컬 저장됨</span><button className="settings-button" onClick={() => setSettingsOpen(true)}>⚙ 설정</button><button className="upload-button" onClick={() => fileRef.current?.click()}>＋ 성적표 업로드</button></div>
         <input ref={fileRef} hidden type="file" accept=".xls,.xlsx,text/html" multiple onChange={onUpload} />
+        <input ref={restoreRef} hidden type="file" accept="application/json,.json" onChange={restoreBackup} />
       </header>
 
-      <section className="hero">
-        <div><p className="eyebrow">STUDENT PERFORMANCE</p><p>시험별 영어 영역 점수와 석차를 연결해 학생의 변화를 빠르게 확인하세요.</p></div>
-        <div className="hero-stats"><div><b>{students.length}</b><span>등록 학생</span></div><div><b>{exams.length}</b><span>누적 시험</span></div><div><b>{missingCount}</b><span>데이터 공백 학생</span></div></div>
-      </section>
-
       {uploadMessage && <div className="toast"><span>✓</span>{uploadMessage}<button onClick={() => setUploadMessage("")}>×</button></div>}
+
+      {settingsOpen && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}>
+        <section className="settings-modal" role="dialog" aria-modal="true" aria-label="데이터 설정">
+          <div className="settings-head"><div><p>SETTINGS</p><h2>데이터 관리</h2></div><button aria-label="닫기" onClick={() => setSettingsOpen(false)}>×</button></div>
+          <div className="settings-actions"><button onClick={downloadBackup}><b>↓ 백업 저장</b><span>현재 등록한 모든 시험 데이터를 JSON 파일로 저장합니다.</span></button><button onClick={() => restoreRef.current?.click()}><b>↑ 백업 복원</b><span>저장해 둔 JSON 파일로 홈페이지 데이터를 복원합니다.</span></button></div>
+          <div className="file-manager"><div className="file-manager-title"><b>등록한 성적표</b><span>{exams.length}개</span></div>{!exams.length ? <p className="no-files">아직 등록한 성적표가 없습니다.</p> : <div className="managed-files">{exams.map((exam) => <div className="managed-file" key={exam.id}><span className="file-icon">XLS</span><div><b>{exam.label}</b><small>{exam.filename} · {exam.rows.length}명</small></div><button onClick={() => removeExam(exam.id)}>삭제</button></div>)}</div>}</div>
+          <div className="settings-foot"><button className="danger-button" disabled={!exams.length} onClick={clearData}>전체 데이터 초기화</button><small>성적 데이터는 이 브라우저에만 저장됩니다.</small></div>
+        </section>
+      </div>}
 
       <section className="workspace">
         <aside className="student-panel card">
