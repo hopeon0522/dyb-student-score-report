@@ -15,7 +15,10 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /백업 저장/);
   assert.match(page, /백업 복원/);
   assert.match(page, /등록한 성적표/);
-  assert.match(page, /시험별 성적 변화/);
+  assert.match(page, /setTrendMetric\("total"\)/);
+  assert.match(page, /aria-pressed/);
+  assert.match(page, /score\[trendMetric\]/);
+  assert.match(page, /activeTrend\.label.*성적 변화/);
   assert.match(page, /데이터 없음/);
   assert.match(page, /DOMParser/);
   assert.match(page, /수험번호/);

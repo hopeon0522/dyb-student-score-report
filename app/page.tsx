@@ -16,6 +16,7 @@ type Score = {
 };
 
 type Exam = { id: string; label: string; filename: string; period: string; rows: Score[] };
+type TrendMetric = "total" | "listening" | "grammar" | "reading" | "campusRank";
 
 const initialExams: Exam[] = [];
 const storageKey = "dyb-score-report-data-v1";
@@ -58,6 +59,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>("total");
   const [hydrated, setHydrated] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLInputElement>(null);
@@ -96,6 +98,19 @@ export default function Home() {
   const previous = valid.at(-2)?.score;
   const current = valid.at(-1)?.score;
   const missingCount = students.filter((student) => exams.some((exam) => !exam.rows.some((row) => row.studentId === student.studentId))).length;
+  const trendConfig: Record<TrendMetric, { label: string; max: number; unit: string }> = {
+    total: { label: "TOTAL", max: 120, unit: "점" },
+    listening: { label: "Listening", max: 40, unit: "점" },
+    grammar: { label: "Grammar", max: 40, unit: "점" },
+    reading: { label: "Reading", max: 40, unit: "점" },
+    campusRank: { label: "캠퍼스 석차", max: Math.max(1, ...valid.map((item) => item.score?.campusRank || 1)), unit: "위" },
+  };
+  const activeTrend = trendConfig[trendMetric];
+
+  function trendHeight(score: Score) {
+    if (trendMetric === "campusRank") return Math.max(28, (1 - (score.campusRank - 1) / activeTrend.max) * 150);
+    return Math.max(28, (score[trendMetric] / activeTrend.max) * 150);
+  }
 
   async function onUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files || [])];
@@ -198,23 +213,23 @@ export default function Home() {
           {!selected ? <section className="empty-report card"><span className="empty-icon">↥</span><p>GET STARTED</p><h2>첫 성적표를 업로드해 주세요</h2><span>학생별 영역 점수와 석차 변화를 자동으로 연결해 드립니다.</span><button onClick={() => fileRef.current?.click()}>＋ 성적표 선택</button><small>업로드한 파일은 서버로 전송되지 않고 현재 브라우저에서만 처리됩니다.</small></section> : <>
           <section className="profile card">
             <div className="profile-main"><span className="profile-avatar">{selected?.name.slice(0,1)}</span><div><div className="profile-name"><h2>{selected?.name}</h2><span>{selected?.level}</span></div><p>{selected?.grade} · 수험번호 {selected?.studentId}</p></div></div>
-            <div className="latest-summary"><span>최근 성적</span><b>{current?.total ?? "—"}<small>/120</small></b>{previous && current ? <Delta value={current.total - previous.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>
+            <div className="latest-summary"><span>최근 성적</span><div className="total-line"><button className={trendMetric === "total" ? "active" : ""} onClick={() => setTrendMetric("total")}>TOTAL</button><b>{current?.total ?? "—"}<small>/120</small></b></div>{previous && current ? <Delta value={current.total - previous.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>
           </section>
 
           <section className="metric-grid">
             {[
-              ["Listening", current?.listening, previous ? (current?.listening || 0) - previous.listening : 0, "blue"],
-              ["Grammar", current?.grammar, previous ? (current?.grammar || 0) - previous.grammar : 0, "coral"],
-              ["Reading", current?.reading, previous ? (current?.reading || 0) - previous.reading : 0, "green"],
-              ["캠퍼스 석차", current?.campusRank, previous ? (current?.campusRank || 0) - previous.campusRank : 0, "violet"],
-            ].map(([label, value, delta, color]) => <article className={`metric-card card ${color}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>{label === "캠퍼스 석차" ? "위" : "/40"}</small></b></div>{previous && current ? <Delta value={Number(delta)} rank={label === "캠퍼스 석차"} /> : <span className="delta neutral">비교 데이터 없음</span>}<div className="meter"><i style={{width: `${label === "캠퍼스 석차" ? Math.max(8, 100 - Number(value || 100) / 2) : Number(value || 0) * 2.5}%`}} /></div></article>)}
+              ["listening", "Listening", current?.listening, previous ? (current?.listening || 0) - previous.listening : 0, "blue"],
+              ["grammar", "Grammar", current?.grammar, previous ? (current?.grammar || 0) - previous.grammar : 0, "coral"],
+              ["reading", "Reading", current?.reading, previous ? (current?.reading || 0) - previous.reading : 0, "green"],
+              ["campusRank", "캠퍼스 석차", current?.campusRank, previous ? (current?.campusRank || 0) - previous.campusRank : 0, "violet"],
+            ].map(([metric, label, value, delta, color]) => <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(metric as TrendMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>{label === "캠퍼스 석차" ? "위" : "/40"}</small></b></div>{previous && current ? <Delta value={Number(delta)} rank={label === "캠퍼스 석차"} /> : <span className="delta neutral">비교 데이터 없음</span>}<div className="meter"><i style={{width: `${label === "캠퍼스 석차" ? Math.max(8, 100 - Number(value || 100) / 2) : Number(value || 0) * 2.5}%`}} /></div></button>)}
           </section>
 
           <section className="trend card">
-            <div className="section-title"><div><p>PROGRESS</p><h2>시험별 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>TOTAL</span><span><i className="dot rank"/>캠퍼스 석차</span></div></div>
+            <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{activeTrend.label}</span></div></div>
             <div className="timeline">
               {history.map(({ exam, score }, index) => <div className={`exam-column ${score ? "" : "missing"}`} key={exam.id}>
-                <div className="chart-zone">{score ? <><span className="rank-badge">{score.campusRank}위</span><div className="bar" style={{height:`${Math.max(28, score.total / 120 * 150)}px`}}><b>{score.total}</b></div></> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
+                <div className="chart-zone">{score ? <div className="bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
                 <strong>{exam.label}</strong><small>{exam.rows.length}명 등록</small>{index < history.length - 1 && <i className="connector"/>}
               </div>)}
             </div>
