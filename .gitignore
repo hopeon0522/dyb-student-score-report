@@ -45,6 +45,7 @@ next-env.d.ts
 # Local reference files contain student personal information
 /참조/
 *.xls
+*.pdf
 
 # This project uses pnpm
 /package-lock.json

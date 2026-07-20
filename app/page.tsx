@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { parsePdfReport, PdfMetric, PdfMetricKey, PdfStudentRecord } from "./pdf-parser";
 
 type Score = {
   name: string;
@@ -13,9 +14,10 @@ type Score = {
   total: number;
   nationalRank: number;
   campusRank: number;
+  pdfMetrics?: Record<PdfMetricKey, PdfMetric>;
 };
 
-type Exam = { id: string; label: string; filename: string; period: string; year: string; rows: Score[] };
+type Exam = { id: string; label: string; filename: string; pdfFilename?: string; period: string; year: string; rows: Score[] };
 type TrendMetric = "total" | "listening" | "grammar" | "reading" | "campusRank";
 type View = "main" | "settings";
 
@@ -23,6 +25,8 @@ const initialExams: Exam[] = [];
 const storageKey = "dyb-score-report-data-v1";
 
 const getNumber = (value: string) => Number((value || "0").split("/")[0].replace(/,/g, ""));
+const fileBase = (filename: string) => filename.normalize("NFC").replace(/\.(?:xlsx?|pdf)$/i, "").trim().toLocaleLowerCase("ko");
+const studentNameKey = (name: string) => name.normalize("NFC").replace(/[A-Z]$/i, "").replace(/\s/g, "");
 
 function examInfo(filename: string) {
   const base = filename.replace(/\.xls[x]?$/i, "").trim();
@@ -53,10 +57,36 @@ function parseHtmlExcel(text: string): Score[] {
   }));
 }
 
+function pairPdf(exam: Exam, pdfFilename: string, pdfStudents: PdfStudentRecord[], period: string) {
+  if (period !== exam.period) throw new Error(`PDF 시험 날짜(${period})가 엑셀 시험 날짜(${exam.period})와 다릅니다.`);
+  const unmatched = [...pdfStudents];
+  const rows = exam.rows.map((row) => {
+    const matchedStudents = unmatched.filter((student) => studentNameKey(student.name) === studentNameKey(row.name) && student.level === row.level && (["listening", "grammar", "reading", "total"] as PdfMetricKey[]).every((key) => Math.abs(student.metrics[key].score - row[key]) < 0.01));
+    if (!matchedStudents.length) throw new Error(`${row.name} 학생의 PDF 점수가 엑셀과 일치하지 않습니다.`);
+    if (matchedStudents.length > 1) throw new Error(`${row.name} 학생이 PDF에 중복되어 자동 연결할 수 없습니다.`);
+    const matched = matchedStudents[0];
+    unmatched.splice(unmatched.indexOf(matched), 1);
+    return { ...row, pdfMetrics: matched.metrics };
+  });
+  if (unmatched.length) throw new Error(`PDF의 ${unmatched[0].name} 학생을 엑셀에서 찾지 못했습니다.`);
+  return { ...exam, pdfFilename, rows };
+}
+
 function Delta({ value, rank = false }: { value: number; rank?: boolean }) {
   const improved = rank ? value < 0 : value > 0;
   if (!value) return <span className="delta neutral">변화 없음</span>;
   return <span className={`delta ${improved ? "up" : "down"}`}>{improved ? "↑" : "↓"} {Math.abs(value).toLocaleString()}{rank ? "위" : "점"}</span>;
+}
+
+function ComparisonBar({ metric, score, maxScore }: { metric?: PdfMetric; score: number; maxScore: number }) {
+  const position = (value: number) => `${Math.min(100, Math.max(0, (value / maxScore) * 100))}%`;
+  const markerPosition = (value: number) => `${Math.min(94, Math.max(6, (value / maxScore) * 100))}%`;
+  return <div className={`score-comparison ${metric ? "ready" : "pending"}`}>
+    <div className="comparison-track"><i style={{ width: position(score) }} />
+      {metric && <><span className="comparison-marker average" style={{ left: markerPosition(metric.average) }}><b>전체 평균</b><em>{metric.average}</em></span><span className="comparison-marker top-ten" style={{ left: markerPosition(metric.top10Average) }}><b>10% 평균</b><em>{metric.top10Average}</em></span></>}
+    </div>
+    {!metric && <small>동일 이름의 PDF를 연결하면 평균 비교가 표시됩니다.</small>}
+  </div>;
 }
 
 export default function Home() {
@@ -66,6 +96,7 @@ export default function Home() {
   const [uploadMessage, setUploadMessage] = useState("");
   const [view, setView] = useState<View>("main");
   const [activeYear, setActiveYear] = useState("");
+  const [selectedExamId, setSelectedExamId] = useState("");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("total");
   const [hydrated, setHydrated] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -112,8 +143,14 @@ export default function Home() {
   const selected = students.find((student) => student.studentId === selectedId) || students[0];
   const history = yearExams.map((exam) => ({ exam, score: exam.rows.find((row) => row.studentId === selected?.studentId) }));
   const valid = history.filter((item) => item.score);
-  const previous = valid.at(-2)?.score;
-  const current = valid.at(-1)?.score;
+  const focusedItem = history.find((item) => item.exam.id === selectedExamId) || valid.at(-1) || history.at(-1);
+  const focusedIndex = focusedItem ? history.findIndex((item) => item.exam.id === focusedItem.exam.id) : -1;
+  const focusedScore = focusedItem?.score;
+  const focusedPrevious = focusedIndex > 0 ? history.slice(0, focusedIndex).filter((item) => item.score).at(-1)?.score : undefined;
+
+  useEffect(() => {
+    if (focusedItem && focusedItem.exam.id !== selectedExamId) setSelectedExamId(focusedItem.exam.id);
+  }, [focusedItem, selectedExamId]);
   const trendConfig: Record<TrendMetric, { label: string; max: number; unit: string }> = {
     total: { label: "TOTAL", max: 120, unit: "점" },
     listening: { label: "Listening", max: 40, unit: "점" },
@@ -130,20 +167,44 @@ export default function Home() {
 
   async function onUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files || [])];
+    let nextExams = exams;
+    let nextSelectedId = selectedId;
+    let nextYear = activeYear;
+    const messages: string[] = [];
     for (const file of files) {
       try {
-        const text = await file.text();
-        const rows = parseHtmlExcel(text);
-        const info = examInfo(file.name);
-        setExams((items) => [...items, { id: `${file.name}-${Date.now()}`, filename: file.name, ...info, rows }]);
-        setActiveYear(info.year);
-        setSelectedId((currentId) => currentId || rows[0]?.studentId || "");
-        setUploadMessage(`${info.label} · ${rows.length}명 등록 완료`);
+        if (/\.pdf$/i.test(file.name)) {
+          const matchingIndex = nextExams.findIndex((exam) => fileBase(exam.filename) === fileBase(file.name));
+          if (matchingIndex < 0) throw new Error("같은 이름의 엑셀 성적표를 먼저 업로드해 주세요.");
+          const parsed = await parsePdfReport(await file.arrayBuffer());
+          const paired = pairPdf(nextExams[matchingIndex], file.name, parsed.students, parsed.period);
+          nextExams = nextExams.map((exam, index) => index === matchingIndex ? paired : exam);
+          nextYear = paired.year;
+          messages.push(`${paired.label} · PDF 연결 완료`);
+        } else {
+          const info = examInfo(file.name);
+          if (nextExams.some((exam) => fileBase(exam.filename) === fileBase(file.name))) throw new Error("같은 이름의 엑셀 성적표가 이미 등록되어 있습니다.");
+          const rows = parseHtmlExcel(await file.text());
+          const exam = { id: `${file.name}-${Date.now()}`, filename: file.name, ...info, rows };
+          nextExams = [...nextExams, exam];
+          nextYear = info.year;
+          nextSelectedId ||= rows[0]?.studentId || "";
+          messages.push(`${info.label} · 엑셀 ${rows.length}명 등록 완료`);
+        }
       } catch (error) {
-        setUploadMessage(error instanceof Error ? error.message : "파일을 읽지 못했습니다.");
+        messages.push(`${file.name}: ${error instanceof Error ? error.message : "파일을 읽지 못했습니다."}`);
       }
     }
+    setExams(nextExams);
+    setActiveYear(nextYear);
+    setSelectedId(nextSelectedId);
+    setUploadMessage(messages.join(" · "));
     event.target.value = "";
+  }
+
+  function removePdf(id: string) {
+    setExams((items) => items.map((exam) => exam.id === id ? { ...exam, pdfFilename: undefined, rows: exam.rows.map(({ pdfMetrics: _pdfMetrics, ...row }) => row) } : exam));
+    setUploadMessage("연결된 PDF 데이터를 해제했습니다.");
   }
 
   function removeExam(id: string) {
@@ -160,7 +221,7 @@ export default function Home() {
   }
 
   function downloadBackup() {
-    const backup = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), exams }, null, 2);
+    const backup = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), exams }, null, 2);
     const url = URL.createObjectURL(new Blob([backup], { type: "application/json" }));
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -194,8 +255,8 @@ export default function Home() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark">D</span><strong>DYB SCORE</strong></div>
         <div className="header-stats"><div><b>{students.length}</b><span>총원</span></div><div><b>{yearExams.length}</b><span>누적 시험</span></div></div>
-        <div className="header-actions"><span className="saved">● 로컬 저장됨</span><button className={`settings-button ${view === "settings" ? "main-button" : ""}`} onClick={() => setView(view === "settings" ? "main" : "settings")}>{view === "settings" ? "← 메인" : "⚙ 설정"}</button><button className="upload-button" onClick={() => fileRef.current?.click()}>＋ 성적표 업로드</button></div>
-        <input ref={fileRef} hidden type="file" accept=".xls,.xlsx,text/html" multiple onChange={onUpload} />
+        <div className="header-actions"><span className="saved">● 로컬 저장됨</span><button className={`settings-button ${view === "settings" ? "main-button" : ""}`} onClick={() => setView(view === "settings" ? "main" : "settings")}>{view === "settings" ? "← 메인" : "⚙ 설정"}</button><button className="upload-button" onClick={() => fileRef.current?.click()}>＋ 엑셀/PDF 업로드</button></div>
+        <input ref={fileRef} hidden type="file" accept=".xls,.xlsx,.pdf,text/html,application/pdf" multiple onChange={onUpload} />
         <input ref={restoreRef} hidden type="file" accept="application/json,.json" onChange={restoreBackup} />
       </header>
 
@@ -203,9 +264,9 @@ export default function Home() {
 
       {view === "settings" ? <section className="settings-workspace">
         <section className="settings-page card" aria-label="데이터 설정">
-          <div className="settings-head"><div><p>SETTINGS</p><h2>데이터 관리</h2></div><span>등록한 성적표와 백업 파일을 관리합니다.</span></div>
+          <div className="settings-head"><div><p>SETTINGS</p><h2>데이터 관리</h2></div><span>엑셀을 먼저 등록한 뒤 같은 이름의 PDF를 연결해 주세요.</span></div>
           <div className="settings-actions"><button onClick={downloadBackup}><b>↓ 백업 저장</b><span>현재 등록한 모든 시험 데이터를 JSON 파일로 저장합니다.</span></button><button onClick={() => restoreRef.current?.click()}><b>↑ 백업 복원</b><span>저장해 둔 JSON 파일로 홈페이지 데이터를 복원합니다.</span></button></div>
-          <div className="file-manager"><div className="file-manager-title"><b>등록한 성적표</b><span>{exams.length}개</span></div>{!exams.length ? <p className="no-files">아직 등록한 성적표가 없습니다.</p> : <div className="managed-files">{exams.map((exam) => <div className="managed-file" key={exam.id}><span className="file-icon">XLS</span><div><b>{exam.label}</b><small>{exam.filename} · {exam.rows.length}명</small></div><button onClick={() => removeExam(exam.id)}>삭제</button></div>)}</div>}</div>
+          <div className="file-manager"><div className="file-manager-title"><b>등록한 성적표</b><span>{exams.length}개 시험</span></div>{!exams.length ? <p className="no-files">아직 등록한 성적표가 없습니다.</p> : <div className="managed-files">{exams.map((exam) => <div className="managed-file" key={exam.id}><span className={`file-icon ${exam.pdfFilename ? "paired" : ""}`}>{exam.pdfFilename ? "PAIR" : "XLS"}</span><div><b>{exam.label}</b><small>{exam.filename} · {exam.rows.length}명</small><small className={exam.pdfFilename ? "pdf-connected" : "pdf-waiting"}>{exam.pdfFilename ? `PDF 연결됨 · ${exam.pdfFilename}` : "PDF 미연결"}</small></div><div className="file-buttons">{exam.pdfFilename && <button onClick={() => removePdf(exam.id)}>PDF 해제</button>}<button onClick={() => removeExam(exam.id)}>시험 삭제</button></div></div>)}</div>}</div>
           <div className="settings-foot"><button className="danger-button" disabled={!exams.length} onClick={clearData}>전체 데이터 초기화</button><small>성적 데이터는 이 브라우저에만 저장됩니다.</small></div>
         </section>
       </section> : <>
@@ -231,19 +292,25 @@ export default function Home() {
         </aside>
 
         <div className="report">
-          {!selected ? <section className="empty-report card"><span className="empty-icon">↥</span><p>GET STARTED</p><h2>첫 성적표를 업로드해 주세요</h2><span>학생별 영역 점수와 석차 변화를 자동으로 연결해 드립니다.</span><button onClick={() => fileRef.current?.click()}>＋ 성적표 선택</button><small>업로드한 파일은 서버로 전송되지 않고 현재 브라우저에서만 처리됩니다.</small></section> : <>
+          {!selected ? <section className="empty-report card"><span className="empty-icon">↥</span><p>GET STARTED</p><h2>엑셀 성적표를 먼저 업로드해 주세요</h2><span>같은 이름의 PDF를 이어서 올리면 평균과 백분위까지 연결됩니다.</span><button onClick={() => fileRef.current?.click()}>＋ 성적표 선택</button><small>업로드한 파일은 서버로 전송되지 않고 현재 브라우저에서만 처리됩니다.</small></section> : <>
+          <nav className="exam-tabs card" aria-label="시험 선택">{history.map(({ exam, score }) => <button key={exam.id} className={focusedItem?.exam.id === exam.id ? "active" : ""} aria-pressed={focusedItem?.exam.id === exam.id} onClick={() => setSelectedExamId(exam.id)}><b>{exam.label}</b><small>{!score ? "데이터 없음" : exam.pdfFilename ? "XLS + PDF" : "XLS"}</small></button>)}</nav>
+
           <section className="profile card">
             <div className="profile-main"><span className="profile-avatar">{selected?.name.slice(0,1)}</span><div><div className="profile-name"><h2>{selected?.name}</h2><span>{selected?.level}</span></div><p>{selected?.grade} · 수험번호 {selected?.studentId}</p></div></div>
-            <div className="latest-summary"><span>최근 성적</span><div className="total-line"><button className={trendMetric === "total" ? "active" : ""} onClick={() => setTrendMetric("total")}>TOTAL</button><b>{current?.total ?? "—"}<small>/120</small></b></div>{previous && current ? <Delta value={current.total - previous.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>
+            <div className="latest-summary"><span>{focusedItem?.exam.label || "선택 시험"}</span><div className="total-line"><button className={trendMetric === "total" ? "active" : ""} onClick={() => setTrendMetric("total")}>TOTAL</button><b>{focusedScore?.total ?? "—"}<small>/120</small></b>{focusedPrevious && focusedScore ? <Delta value={focusedScore.total - focusedPrevious.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>{focusedScore && <ComparisonBar metric={focusedScore.pdfMetrics?.total} score={focusedScore.total} maxScore={120} />}</div>
           </section>
 
           <section className="metric-grid">
             {[
-              ["listening", "Listening", current?.listening, previous ? (current?.listening || 0) - previous.listening : 0, "blue"],
-              ["grammar", "Grammar", current?.grammar, previous ? (current?.grammar || 0) - previous.grammar : 0, "coral"],
-              ["reading", "Reading", current?.reading, previous ? (current?.reading || 0) - previous.reading : 0, "green"],
-              ["campusRank", "캠퍼스 석차", current?.campusRank, previous ? (current?.campusRank || 0) - previous.campusRank : 0, "violet"],
-            ].map(([metric, label, value, delta, color]) => <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(metric as TrendMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>{label === "캠퍼스 석차" ? "위" : "/40"}</small></b></div>{previous && current ? <Delta value={Number(delta)} rank={label === "캠퍼스 석차"} /> : <span className="delta neutral">비교 데이터 없음</span>}<div className="meter"><i style={{width: `${label === "캠퍼스 석차" ? Math.max(8, 100 - Number(value || 100) / 2) : Number(value || 0) * 2.5}%`}} /></div></button>)}
+              ["listening", "Listening", focusedScore?.listening, focusedPrevious ? (focusedScore?.listening || 0) - focusedPrevious.listening : 0, "blue"],
+              ["grammar", "Grammar", focusedScore?.grammar, focusedPrevious ? (focusedScore?.grammar || 0) - focusedPrevious.grammar : 0, "coral"],
+              ["reading", "Reading", focusedScore?.reading, focusedPrevious ? (focusedScore?.reading || 0) - focusedPrevious.reading : 0, "green"],
+              ["campusRank", "캠퍼스 석차", focusedScore?.campusRank, focusedPrevious ? (focusedScore?.campusRank || 0) - focusedPrevious.campusRank : 0, "violet"],
+            ].map(([metric, label, value, delta, color]) => {
+              const scoreMetric = metric as TrendMetric;
+              const pdfMetric = scoreMetric === "campusRank" ? focusedScore?.pdfMetrics?.total : focusedScore?.pdfMetrics?.[scoreMetric as PdfMetricKey];
+              return <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(scoreMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>{label === "캠퍼스 석차" ? "위" : "/40"}</small>{label === "캠퍼스 석차" && pdfMetric && <em className="card-percentile">({pdfMetric.campusPercentile.toFixed(1)}%)</em>}</b></div>{focusedPrevious && focusedScore ? <Delta value={Number(delta)} rank={label === "캠퍼스 석차"} /> : <span className="delta neutral">비교 데이터 없음</span>}{label === "캠퍼스 석차" ? <div className="meter"><i style={{width: `${Math.max(8, 100 - Number(value || 100) / 2)}%`}} /></div> : value !== undefined && <ComparisonBar metric={pdfMetric} score={Number(value)} maxScore={40} />}</button>;
+            })}
           </section>
 
           <section className="trend card">
@@ -264,7 +331,7 @@ export default function Home() {
             <div className="table-wrap"><table><thead><tr><th>시험명</th><th>Listening</th><th>Grammar</th><th>Reading</th><th>TOTAL</th><th>전국 석차</th><th>캠퍼스 석차</th></tr></thead><tbody>
               {history.map(({exam,score}, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
-                return <tr key={exam.id} className={!score ? "empty-row" : ""}><td><b>{exam.label}</b><small>{exam.filename}</small></td>{score ? <><td>{score.listening}<small>/40</small></td><td>{score.grammar}<small>/40</small></td><td>{score.reading}<small>/40</small></td><td><b>{score.total}</b><small>/120</small></td><td><span className="rank-cell"><span>{score.nationalRank.toLocaleString()}위</span><span className="rank-delta-slot">{previousScore && <Delta value={score.nationalRank - previousScore.nationalRank} rank />}</span></span></td><td><span className="rank-cell"><b>{score.campusRank}위</b><span className="rank-delta-slot">{previousScore && <Delta value={score.campusRank - previousScore.campusRank} rank />}</span></span></td></> : <td colSpan={6}><span className="no-data">데이터 없음</span></td>}</tr>;
+                return <tr key={exam.id} className={!score ? "empty-row" : ""}><td><b>{exam.label}</b><small>{exam.filename}{exam.pdfFilename ? " · PDF 연결" : " · PDF 미연결"}</small></td>{score ? <><td>{score.listening}<small>/40</small></td><td>{score.grammar}<small>/40</small></td><td>{score.reading}<small>/40</small></td><td><b>{score.total}</b><small>/120</small></td><td><span className="rank-cell"><span className="rank-value"><span>{score.nationalRank.toLocaleString()}위</span>{score.pdfMetrics && <small>({score.pdfMetrics.total.nationalPercentile.toFixed(1)}%)</small>}</span><span className="rank-delta-slot">{previousScore && <Delta value={score.nationalRank - previousScore.nationalRank} rank />}</span></span></td><td><span className="rank-cell"><span className="rank-value"><b>{score.campusRank}위</b>{score.pdfMetrics && <small>({score.pdfMetrics.total.campusPercentile.toFixed(1)}%)</small>}</span><span className="rank-delta-slot">{previousScore && <Delta value={score.campusRank - previousScore.campusRank} rank />}</span></span></td></> : <td colSpan={6}><span className="no-data">데이터 없음</span></td>}</tr>;
               })}
             </tbody></table></div>
           </section>
