@@ -4,6 +4,7 @@ import test from "node:test";
 
 const pageUrl = new URL("../app/page.tsx", import.meta.url);
 const layoutUrl = new URL("../app/layout.tsx", import.meta.url);
+const cssUrl = new URL("../app/globals.css", import.meta.url);
 
 test("contains the student report and upload workflow", async () => {
   const page = await readFile(pageUrl, "utf8");
@@ -49,4 +50,9 @@ test("uses the finished Korean site metadata", async () => {
   assert.match(layout, /title: "DYB SCORE"/);
   assert.match(layout, /학생 성적관리 도구/);
   assert.doesNotMatch(layout, /Starter Project|Your site is taking shape/);
+});
+
+test("aligns rank headings with rank values", async () => {
+  const css = await readFile(cssUrl, "utf8");
+  assert.match(css, /th:nth-child\(6\),th:nth-child\(7\)\{padding-right:90px\}/);
 });
