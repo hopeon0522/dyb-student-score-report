@@ -29,6 +29,14 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /score\.nationalRank - previousScore\.nationalRank/);
   assert.match(page, /score\.campusRank - previousScore\.campusRank/);
   assert.match(page, /className="rank-cell"/);
+  assert.match(page, /className="rank-delta-slot"/);
+  assert.match(page, /검색어 지우기/);
+  assert.match(page, /view === "settings"/);
+  assert.match(page, /연도 선택/);
+  assert.match(page, /setActiveYear/);
+  assert.match(page, /파일명 맨 앞에 연도와 월/);
+  assert.match(page, />총원</);
+  assert.doesNotMatch(page, /등록 학생|데이터 공백 학생|학생 성장 리포트/);
   assert.match(page, /const initialExams: Exam\[\] = \[\]/);
   assert.doesNotMatch(page, /const (feb|may): Score\[\]/);
   assert.doesNotMatch(page, /SkeletonPreview|codex-preview/);
@@ -38,7 +46,7 @@ test("uses the finished Korean site metadata", async () => {
   const layout = await readFile(layoutUrl, "utf8");
 
   assert.match(layout, /lang="ko"/);
-  assert.match(layout, /DYB 학생 성장 리포트/);
+  assert.match(layout, /title: "DYB SCORE"/);
   assert.match(layout, /학생 성적관리 도구/);
   assert.doesNotMatch(layout, /Starter Project|Your site is taking shape/);
 });

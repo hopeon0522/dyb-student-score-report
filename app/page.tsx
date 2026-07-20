@@ -15,8 +15,9 @@ type Score = {
   campusRank: number;
 };
 
-type Exam = { id: string; label: string; filename: string; period: string; rows: Score[] };
+type Exam = { id: string; label: string; filename: string; period: string; year: string; rows: Score[] };
 type TrendMetric = "total" | "listening" | "grammar" | "reading" | "campusRank";
+type View = "main" | "settings";
 
 const initialExams: Exam[] = [];
 const storageKey = "dyb-score-report-data-v1";
@@ -26,10 +27,15 @@ const getNumber = (value: string) => Number((value || "0").split("/")[0].replace
 function examInfo(filename: string) {
   const base = filename.replace(/\.xls[x]?$/i, "").trim();
   const match = base.match(/^(\d{4})[.-](\d{1,2})\s+(.+)$/);
-  if (!match) return { label: base, period: "날짜 미정" };
+  if (!match) throw new Error("파일명 맨 앞에 연도와 월을 입력해 주세요. 예: 2026.02 중등 1차 형성평가.xls");
   const [, year, month, title] = match;
   const period = `${year.slice(2)}/${month.padStart(2, "0")}`;
-  return { label: `${title}(${period})`, period };
+  return { label: `${title}(${period})`, period, year };
+}
+
+function restoreExam(exam: Exam) {
+  if (exam.year) return exam;
+  return { ...exam, year: examInfo(exam.filename).year };
 }
 
 function parseHtmlExcel(text: string): Score[] {
@@ -58,7 +64,8 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState("");
   const [query, setQuery] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [view, setView] = useState<View>("main");
+  const [activeYear, setActiveYear] = useState("");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("total");
   const [hydrated, setHydrated] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,8 +77,10 @@ export default function Home() {
       if (saved) {
         const restored = JSON.parse(saved) as Exam[];
         if (Array.isArray(restored)) {
-          setExams(restored);
-          setSelectedId(restored[0]?.rows[0]?.studentId || "");
+          const normalized = restored.map(restoreExam);
+          setExams(normalized);
+          setActiveYear([...new Set(normalized.map((exam) => exam.year))].sort().at(-1) || "");
+          setSelectedId(normalized[0]?.rows[0]?.studentId || "");
         }
       }
     } catch {
@@ -86,18 +95,25 @@ export default function Home() {
     localStorage.setItem(storageKey, JSON.stringify(exams));
   }, [exams, hydrated]);
 
+  const years = useMemo(() => [...new Set(exams.map((exam) => exam.year))].sort((a, b) => b.localeCompare(a)), [exams]);
+  const yearExams = useMemo(() => exams.filter((exam) => exam.year === activeYear), [exams, activeYear]);
+
+  useEffect(() => {
+    if (years.length && !years.includes(activeYear)) setActiveYear(years[0]);
+    if (!years.length && activeYear) setActiveYear("");
+  }, [activeYear, years]);
+
   const students = useMemo(() => {
     const map = new Map<string, Score>();
-    exams.forEach((exam) => exam.rows.forEach((row) => map.set(row.studentId, row)));
+    yearExams.forEach((exam) => exam.rows.forEach((row) => map.set(row.studentId, row)));
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  }, [exams]);
+  }, [yearExams]);
   const filtered = students.filter((student) => `${student.name} ${student.studentId}`.includes(query.trim()));
   const selected = students.find((student) => student.studentId === selectedId) || students[0];
-  const history = exams.map((exam) => ({ exam, score: exam.rows.find((row) => row.studentId === selected?.studentId) }));
+  const history = yearExams.map((exam) => ({ exam, score: exam.rows.find((row) => row.studentId === selected?.studentId) }));
   const valid = history.filter((item) => item.score);
   const previous = valid.at(-2)?.score;
   const current = valid.at(-1)?.score;
-  const missingCount = students.filter((student) => exams.some((exam) => !exam.rows.some((row) => row.studentId === student.studentId))).length;
   const trendConfig: Record<TrendMetric, { label: string; max: number; unit: string }> = {
     total: { label: "TOTAL", max: 120, unit: "점" },
     listening: { label: "Listening", max: 40, unit: "점" },
@@ -120,6 +136,7 @@ export default function Home() {
         const rows = parseHtmlExcel(text);
         const info = examInfo(file.name);
         setExams((items) => [...items, { id: `${file.name}-${Date.now()}`, filename: file.name, ...info, rows }]);
+        setActiveYear(info.year);
         setSelectedId((currentId) => currentId || rows[0]?.studentId || "");
         setUploadMessage(`${info.label} · ${rows.length}명 등록 완료`);
       } catch (error) {
@@ -139,7 +156,7 @@ export default function Home() {
     setExams([]);
     setSelectedId("");
     setUploadMessage("모든 홈페이지 데이터를 초기화했습니다.");
-    setSettingsOpen(false);
+    setView("main");
   }
 
   function downloadBackup() {
@@ -160,10 +177,12 @@ export default function Home() {
       const data = JSON.parse(await file.text()) as { exams?: Exam[] } | Exam[];
       const restored = Array.isArray(data) ? data : data.exams;
       if (!Array.isArray(restored) || restored.some((exam) => !exam.id || !Array.isArray(exam.rows))) throw new Error();
-      setExams(restored);
-      setSelectedId(restored[0]?.rows[0]?.studentId || "");
-      setUploadMessage(`${restored.length}개 시험 데이터를 복원했습니다.`);
-      setSettingsOpen(false);
+      const normalized = restored.map(restoreExam);
+      setExams(normalized);
+      setActiveYear([...new Set(normalized.map((exam) => exam.year))].sort().at(-1) || "");
+      setSelectedId(normalized[0]?.rows[0]?.studentId || "");
+      setUploadMessage(`${normalized.length}개 시험 데이터를 복원했습니다.`);
+      setView("main");
     } catch {
       setUploadMessage("올바른 DYB 백업 파일이 아닙니다.");
     }
@@ -173,34 +192,36 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand"><span className="brand-mark">D</span><div><strong>DYB SCORE</strong><small>학생 성장 리포트</small></div></div>
-        <div className="header-stats"><div><b>{students.length}</b><span>등록 학생</span></div><div><b>{exams.length}</b><span>누적 시험</span></div><div><b>{missingCount}</b><span>데이터 공백 학생</span></div></div>
-        <div className="header-actions"><span className="saved">● 로컬 저장됨</span><button className="settings-button" onClick={() => setSettingsOpen(true)}>⚙ 설정</button><button className="upload-button" onClick={() => fileRef.current?.click()}>＋ 성적표 업로드</button></div>
+        <div className="brand"><span className="brand-mark">D</span><strong>DYB SCORE</strong></div>
+        <div className="header-stats"><div><b>{students.length}</b><span>총원</span></div><div><b>{yearExams.length}</b><span>누적 시험</span></div></div>
+        <div className="header-actions"><span className="saved">● 로컬 저장됨</span><button className={`settings-button ${view === "settings" ? "main-button" : ""}`} onClick={() => setView(view === "settings" ? "main" : "settings")}>{view === "settings" ? "← 메인" : "⚙ 설정"}</button><button className="upload-button" onClick={() => fileRef.current?.click()}>＋ 성적표 업로드</button></div>
         <input ref={fileRef} hidden type="file" accept=".xls,.xlsx,text/html" multiple onChange={onUpload} />
         <input ref={restoreRef} hidden type="file" accept="application/json,.json" onChange={restoreBackup} />
       </header>
 
       {uploadMessage && <div className="toast"><span>✓</span>{uploadMessage}<button onClick={() => setUploadMessage("")}>×</button></div>}
 
-      {settingsOpen && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}>
-        <section className="settings-modal" role="dialog" aria-modal="true" aria-label="데이터 설정">
-          <div className="settings-head"><div><p>SETTINGS</p><h2>데이터 관리</h2></div><button aria-label="닫기" onClick={() => setSettingsOpen(false)}>×</button></div>
+      {view === "settings" ? <section className="settings-workspace">
+        <section className="settings-page card" aria-label="데이터 설정">
+          <div className="settings-head"><div><p>SETTINGS</p><h2>데이터 관리</h2></div><span>등록한 성적표와 백업 파일을 관리합니다.</span></div>
           <div className="settings-actions"><button onClick={downloadBackup}><b>↓ 백업 저장</b><span>현재 등록한 모든 시험 데이터를 JSON 파일로 저장합니다.</span></button><button onClick={() => restoreRef.current?.click()}><b>↑ 백업 복원</b><span>저장해 둔 JSON 파일로 홈페이지 데이터를 복원합니다.</span></button></div>
           <div className="file-manager"><div className="file-manager-title"><b>등록한 성적표</b><span>{exams.length}개</span></div>{!exams.length ? <p className="no-files">아직 등록한 성적표가 없습니다.</p> : <div className="managed-files">{exams.map((exam) => <div className="managed-file" key={exam.id}><span className="file-icon">XLS</span><div><b>{exam.label}</b><small>{exam.filename} · {exam.rows.length}명</small></div><button onClick={() => removeExam(exam.id)}>삭제</button></div>)}</div>}</div>
           <div className="settings-foot"><button className="danger-button" disabled={!exams.length} onClick={clearData}>전체 데이터 초기화</button><small>성적 데이터는 이 브라우저에만 저장됩니다.</small></div>
         </section>
-      </div>}
+      </section> : <>
+
+      {!!years.length && <nav className="year-tabs" aria-label="연도 선택">{years.map((year) => <button key={year} className={activeYear === year ? "active" : ""} aria-pressed={activeYear === year} onClick={() => { setActiveYear(year); setQuery(""); }}>{year}년</button>)}</nav>}
 
       <section className="workspace">
         <aside className="student-panel card">
           <div className="panel-heading"><div><p>STUDENTS</p><h2>학생 목록</h2></div><span>{filtered.length}명</span></div>
-          <label className="search"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="이름 또는 수험번호 검색" /></label>
+          <label className="search"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="이름 또는 수험번호 검색" />{query && <button type="button" aria-label="검색어 지우기" onClick={() => setQuery("")}>×</button>}</label>
           <div className="student-list">
             {!filtered.length && <div className="student-empty"><span>↥</span><b>등록된 학생이 없습니다</b><small>성적표를 업로드하면 학생 목록이 생성됩니다.</small></div>}
             {filtered.map((student) => {
-              const latest = [...exams].reverse().find((exam) => exam.rows.some((row) => row.studentId === student.studentId));
+              const latest = [...yearExams].reverse().find((exam) => exam.rows.some((row) => row.studentId === student.studentId));
               const score = latest?.rows.find((row) => row.studentId === student.studentId);
-              const gaps = exams.filter((exam) => !exam.rows.some((row) => row.studentId === student.studentId)).length;
+              const gaps = yearExams.filter((exam) => !exam.rows.some((row) => row.studentId === student.studentId)).length;
               return <button key={student.studentId} className={`student-row ${selected?.studentId === student.studentId ? "active" : ""}`} onClick={() => setSelectedId(student.studentId)}>
                 <span className="avatar">{student.name.slice(0,1)}</span><span className="student-meta"><b>{student.name}</b><small>{student.grade} · {student.level} · {student.studentId}</small></span>
                 <span className="latest-score"><b>{score?.total ?? "—"}</b><small>{gaps ? `${gaps}회 공백` : "전체 응시"}</small></span>
@@ -243,14 +264,15 @@ export default function Home() {
             <div className="table-wrap"><table><thead><tr><th>시험명</th><th>Listening</th><th>Grammar</th><th>Reading</th><th>TOTAL</th><th>전국 석차</th><th>캠퍼스 석차</th></tr></thead><tbody>
               {history.map(({exam,score}, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
-                return <tr key={exam.id} className={!score ? "empty-row" : ""}><td><b>{exam.label}</b><small>{exam.filename}</small></td>{score ? <><td>{score.listening}<small>/40</small></td><td>{score.grammar}<small>/40</small></td><td>{score.reading}<small>/40</small></td><td><b>{score.total}</b><small>/120</small></td><td><span className="rank-cell"><span>{score.nationalRank.toLocaleString()}위</span>{previousScore && <Delta value={score.nationalRank - previousScore.nationalRank} rank />}</span></td><td><span className="rank-cell"><b>{score.campusRank}위</b>{previousScore && <Delta value={score.campusRank - previousScore.campusRank} rank />}</span></td></> : <td colSpan={6}><span className="no-data">데이터 없음</span></td>}</tr>;
+                return <tr key={exam.id} className={!score ? "empty-row" : ""}><td><b>{exam.label}</b><small>{exam.filename}</small></td>{score ? <><td>{score.listening}<small>/40</small></td><td>{score.grammar}<small>/40</small></td><td>{score.reading}<small>/40</small></td><td><b>{score.total}</b><small>/120</small></td><td><span className="rank-cell"><span>{score.nationalRank.toLocaleString()}위</span><span className="rank-delta-slot">{previousScore && <Delta value={score.nationalRank - previousScore.nationalRank} rank />}</span></span></td><td><span className="rank-cell"><b>{score.campusRank}위</b><span className="rank-delta-slot">{previousScore && <Delta value={score.campusRank - previousScore.campusRank} rank />}</span></span></td></> : <td colSpan={6}><span className="no-data">데이터 없음</span></td>}</tr>;
               })}
             </tbody></table></div>
           </section>
           </>}
         </div>
       </section>
-      <footer>DYB 학생 성장 리포트 <span>·</span> 성적표 원본은 현재 브라우저에서만 처리됩니다.</footer>
+      </>}
+      <footer>DYB SCORE <span>·</span> 성적표 원본은 현재 브라우저에서만 처리됩니다.</footer>
     </main>
   );
 }
