@@ -326,15 +326,15 @@ export default function Home() {
           </section>
 
           <section className="trend card">
-            <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{activeTrend.label}</span>{trendMetric !== "campusRank" && <><span><i className="dot average"/>전체 평균</span><span><i className="dot top-ten"/>10% 평균</span></>}</div></div>
+            <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{trendMetric === "campusRank" ? activeTrend.label : "학생점수"}</span>{trendMetric !== "campusRank" && <><span><i className="dot average"/>전체평균</span><span><i className="dot top-ten"/>상위 10% 평균</span></>}</div></div>
             <div className="timeline">
               {history.map(({ exam, score }, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
                 const change = score && previousScore ? score[trendMetric] - previousScore[trendMetric] : undefined;
                 const referenceMetric = score && trendMetric !== "campusRank" ? score.pdfMetrics?.[trendMetric as PdfMetricKey] : undefined;
                 return <div className={`exam-column ${score ? "" : "missing"}`} key={exam.id}>
-                <div className="chart-zone">{score ? <div className="chart-stack">{change !== undefined && <Delta value={change} rank={trendMetric === "campusRank"} />}<div className="chart-bars"><div className="bar student-bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div>{referenceMetric && <><div className="bar reference-bar average-bar" style={{height:`${referenceHeight(referenceMetric.average)}px`}}><b>{referenceMetric.average}</b></div><div className="bar reference-bar top-ten-bar" style={{height:`${referenceHeight(referenceMetric.top10Average)}px`}}><b>{referenceMetric.top10Average}</b></div></>}</div></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
-                <strong>{exam.label}</strong><small>{exam.rows.length}명 등록</small>{index < history.length - 1 && <i className="connector"/>}
+                <div className="chart-zone">{score ? <div className="chart-stack">{change !== undefined && <Delta value={change} rank={trendMetric === "campusRank"} />}<div className="chart-bars"><div className="progress-series student-series"><div className="bar student-bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div><small>학생점수</small></div>{referenceMetric && <><div className="progress-series reference-series"><div className="bar reference-bar average-bar" style={{height:`${referenceHeight(referenceMetric.average)}px`}}><b>{referenceMetric.average}</b></div><small>전체평균</small></div><div className="progress-series reference-series"><div className="bar reference-bar top-ten-bar" style={{height:`${referenceHeight(referenceMetric.top10Average)}px`}}><b>{referenceMetric.top10Average}</b></div><small>상위 10%</small></div></>}</div></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
+                <strong>{exam.label}</strong>{index < history.length - 1 && <i className="connector"/>}
               </div>})}
             </div>
           </section>

@@ -49,13 +49,19 @@ button,input { font:inherit; } button { cursor:pointer; }
 .rank-summary>.delta{font-size:10px;padding:3px 6px;margin-top:7px}
 
 /* Progress reference bars and elevated Total control. */
-.profile{position:relative;padding-top:42px}
-.profile-total-button{position:absolute;top:11px;left:24px;margin:0}
+.profile{position:relative;padding-top:46px}
+.profile-total-button{position:absolute;top:14px;left:92px;margin:0;padding:8px 15px;font-size:16px}
 .dot.average{background:#f3a44f}
 .dot.top-ten{background:#37b5a5}
 .chart-bars{display:flex;align-items:flex-end;gap:5px}
+.progress-series{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}
+.student-series{width:52px}
+.reference-series{width:42px}
+.progress-series>small{font-size:9px;line-height:1;color:#747b88;font-weight:750;white-space:nowrap;letter-spacing:-.05em}
 .reference-bar{width:26px;border-radius:7px 7px 2px 2px;box-shadow:none}
 .reference-bar.average-bar{background:#f3a44f}
 .reference-bar.top-ten-bar{background:#37b5a5}
 .reference-bar b{max-width:100%;overflow:hidden;font-size:8px;line-height:1;color:#fff;margin-top:6px;letter-spacing:-.04em}
-@media(max-width:480px){.profile-total-button{left:18px}.legend{display:none}}
+.legend{gap:18px;font-size:14px;font-weight:750}
+.legend .dot{width:10px;height:10px}
+@media(max-width:480px){.profile-total-button{left:86px}.legend{display:none}}

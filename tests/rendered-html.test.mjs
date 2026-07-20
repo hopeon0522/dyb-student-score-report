@@ -49,6 +49,11 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /className="chart-bars"/);
   assert.match(page, /average-bar/);
   assert.match(page, /top-ten-bar/);
+  assert.match(page, /progress-series/);
+  assert.match(page, /학생점수/);
+  assert.match(page, /전체평균/);
+  assert.match(page, /상위 10% 평균/);
+  assert.doesNotMatch(page, /exam\.rows\.length\}명 등록/);
   assert.doesNotMatch(page, />파일 추가</);
   assert.match(page, /className="exam-tabs card"/);
   assert.match(page, /<ComparisonBar/);
@@ -78,6 +83,8 @@ test("uses the finished Korean site metadata", async () => {
 test("aligns rank headings with rank values", async () => {
   const css = await readFile(cssUrl, "utf8");
   assert.match(css, /th:nth-child\(6\),th:nth-child\(7\)\{padding-right:90px\}/);
+  assert.match(css, /\.legend\{gap:18px;font-size:14px/);
+  assert.match(css, /\.profile-total-button\{position:absolute;top:14px;left:92px.*font-size:16px/);
 });
 
 test("parses paired PDF report fields in the browser", async () => {
