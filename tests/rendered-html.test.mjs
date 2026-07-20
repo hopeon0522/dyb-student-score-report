@@ -18,6 +18,8 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /setTrendMetric\("total"\)/);
   assert.match(page, /aria-pressed/);
   assert.match(page, /score\[trendMetric\]/);
+  assert.match(page, /previousScore/);
+  assert.match(page, /change !== undefined.*<Delta/);
   assert.match(page, /activeTrend\.label.*성적 변화/);
   assert.match(page, /데이터 없음/);
   assert.match(page, /DOMParser/);

@@ -228,10 +228,13 @@ export default function Home() {
           <section className="trend card">
             <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{activeTrend.label}</span></div></div>
             <div className="timeline">
-              {history.map(({ exam, score }, index) => <div className={`exam-column ${score ? "" : "missing"}`} key={exam.id}>
-                <div className="chart-zone">{score ? <div className="bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
+              {history.map(({ exam, score }, index) => {
+                const previousScore = index > 0 ? history[index - 1].score : undefined;
+                const change = score && previousScore ? score[trendMetric] - previousScore[trendMetric] : undefined;
+                return <div className={`exam-column ${score ? "" : "missing"}`} key={exam.id}>
+                <div className="chart-zone">{score ? <div className="chart-stack">{change !== undefined && <Delta value={change} rank={trendMetric === "campusRank"} />}<div className="bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
                 <strong>{exam.label}</strong><small>{exam.rows.length}명 등록</small>{index < history.length - 1 && <i className="connector"/>}
-              </div>)}
+              </div>})}
             </div>
           </section>
 
