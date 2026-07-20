@@ -89,6 +89,14 @@ function ComparisonBar({ metric, score, maxScore }: { metric?: PdfMetric; score:
   </div>;
 }
 
+function HorizontalProgressBar({ label, value, unit, width, color, delta, rank = false }: { label: string; value: number; unit: string; width: number; color: string; delta?: number; rank?: boolean }) {
+  return <div className="horizontal-bar-row">
+    <span className="horizontal-bar-label">{label}</span>
+    <div className="horizontal-track"><i className={color} style={{ width: `${Math.min(100, Math.max(6, width))}%` }}><b>{value.toLocaleString()}{unit}</b></i></div>
+    <span className="horizontal-delta">{delta !== undefined && <Delta value={delta} rank={rank} />}</span>
+  </div>;
+}
+
 export default function Home() {
   const [exams, setExams] = useState(initialExams);
   const [selectedId, setSelectedId] = useState("");
@@ -159,14 +167,14 @@ export default function Home() {
     campusRank: { label: "캠퍼스 석차", max: Math.max(1, ...valid.map((item) => item.score?.campusRank || 1)), unit: "위" },
   };
   const activeTrend = trendConfig[trendMetric];
+  const nationalRankMax = Math.max(1, ...valid.map((item) => item.score?.nationalRank || 1));
 
-  function trendHeight(score: Score) {
-    if (trendMetric === "campusRank") return Math.max(28, (1 - (score.campusRank - 1) / activeTrend.max) * 150);
-    return Math.max(28, (score[trendMetric] / activeTrend.max) * 150);
+  function scoreWidth(value: number) {
+    return (value / activeTrend.max) * 100;
   }
 
-  function referenceHeight(value: number) {
-    return Math.max(28, (value / activeTrend.max) * 150);
+  function rankWidth(value: number, max: number) {
+    return max <= 1 ? 100 : (1 - (value - 1) / max) * 100;
   }
 
   async function onUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -326,16 +334,22 @@ export default function Home() {
           </section>
 
           <section className="trend card">
-            <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{trendMetric === "campusRank" ? activeTrend.label : "학생점수"}</span>{trendMetric !== "campusRank" && <><span><i className="dot average"/>전체평균</span><span><i className="dot top-ten"/>상위 10% 평균</span></>}</div></div>
-            <div className="timeline">
+            <div className="section-title"><div><p>PROGRESS</p><h2>{trendMetric === "campusRank" ? "전국·캠퍼스 석차 변화" : `${activeTrend.label} 성적 변화`}</h2></div><div className="legend">{trendMetric === "campusRank" ? <><span><i className="dot campus"/>캠퍼스 석차</span><span><i className="dot national"/>전국 석차</span></> : <><span><i className="dot total"/>학생점수</span><span><i className="dot average"/>전체평균</span><span><i className="dot top-ten"/>상위 10% 평균</span></>}</div></div>
+            <div className="horizontal-timeline">
               {history.map(({ exam, score }, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
                 const change = score && previousScore ? score[trendMetric] - previousScore[trendMetric] : undefined;
                 const referenceMetric = score && trendMetric !== "campusRank" ? score.pdfMetrics?.[trendMetric as PdfMetricKey] : undefined;
-                return <div className={`exam-column ${score ? "" : "missing"}`} key={exam.id}>
-                <div className="chart-zone">{score ? <div className="chart-stack">{change !== undefined && <Delta value={change} rank={trendMetric === "campusRank"} />}<div className="chart-bars"><div className="progress-series student-series"><div className="bar student-bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div><small>학생점수</small></div>{referenceMetric && <><div className="progress-series reference-series"><div className="bar reference-bar average-bar" style={{height:`${referenceHeight(referenceMetric.average)}px`}}><b>{referenceMetric.average}</b></div><small>전체평균</small></div><div className="progress-series reference-series"><div className="bar reference-bar top-ten-bar" style={{height:`${referenceHeight(referenceMetric.top10Average)}px`}}><b>{referenceMetric.top10Average}</b></div><small>상위 10%</small></div></>}</div></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
-                <strong>{exam.label}</strong>{index < history.length - 1 && <i className="connector"/>}
-              </div>})}
+                return <div className={`horizontal-exam ${score ? "" : "missing"}`} key={exam.id}>
+                  <strong>{exam.label}</strong>
+                  {!score ? <div className="horizontal-no-data">데이터 없음</div> : trendMetric === "campusRank" ? <div className="horizontal-series-list rank-series-list">
+                    <HorizontalProgressBar label="캠퍼스 석차" value={score.campusRank} unit="위" width={rankWidth(score.campusRank, activeTrend.max)} color="campus-bar" delta={change} rank />
+                    <HorizontalProgressBar label="전국 석차" value={score.nationalRank} unit="위" width={rankWidth(score.nationalRank, nationalRankMax)} color="national-bar" delta={previousScore ? score.nationalRank - previousScore.nationalRank : undefined} rank />
+                  </div> : <div className="horizontal-series-list">
+                    <HorizontalProgressBar label="학생점수" value={score[trendMetric]} unit={activeTrend.unit} width={scoreWidth(score[trendMetric])} color="student-bar" delta={change} />
+                    {referenceMetric && <><HorizontalProgressBar label="전체평균" value={referenceMetric.average} unit="점" width={scoreWidth(referenceMetric.average)} color="average-bar" /><HorizontalProgressBar label="상위 10% 평균" value={referenceMetric.top10Average} unit="점" width={scoreWidth(referenceMetric.top10Average)} color="top-ten-bar" /></>}
+                  </div>}
+                </div>})}
             </div>
           </section>
 
