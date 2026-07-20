@@ -241,7 +241,10 @@ export default function Home() {
           <section className="history card">
             <div className="section-title"><div><p>DETAIL</p><h2>시험별 상세 기록</h2></div><button onClick={() => fileRef.current?.click()}>파일 추가</button></div>
             <div className="table-wrap"><table><thead><tr><th>시험명</th><th>Listening</th><th>Grammar</th><th>Reading</th><th>TOTAL</th><th>전국 석차</th><th>캠퍼스 석차</th></tr></thead><tbody>
-              {history.map(({exam,score}) => <tr key={exam.id} className={!score ? "empty-row" : ""}><td><b>{exam.label}</b><small>{exam.filename}</small></td>{score ? <><td>{score.listening}<small>/40</small></td><td>{score.grammar}<small>/40</small></td><td>{score.reading}<small>/40</small></td><td><b>{score.total}</b><small>/120</small></td><td>{score.nationalRank.toLocaleString()}위</td><td><b>{score.campusRank}위</b></td></> : <td colSpan={6}><span className="no-data">데이터 없음</span></td>}</tr>)}
+              {history.map(({exam,score}, index) => {
+                const previousScore = index > 0 ? history[index - 1].score : undefined;
+                return <tr key={exam.id} className={!score ? "empty-row" : ""}><td><b>{exam.label}</b><small>{exam.filename}</small></td>{score ? <><td>{score.listening}<small>/40</small></td><td>{score.grammar}<small>/40</small></td><td>{score.reading}<small>/40</small></td><td><b>{score.total}</b><small>/120</small></td><td><span className="rank-cell"><span>{score.nationalRank.toLocaleString()}위</span>{previousScore && <Delta value={score.nationalRank - previousScore.nationalRank} rank />}</span></td><td><span className="rank-cell"><b>{score.campusRank}위</b>{previousScore && <Delta value={score.campusRank - previousScore.campusRank} rank />}</span></td></> : <td colSpan={6}><span className="no-data">데이터 없음</span></td>}</tr>;
+              })}
             </tbody></table></div>
           </section>
           </>}

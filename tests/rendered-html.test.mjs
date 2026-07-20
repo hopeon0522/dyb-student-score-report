@@ -26,6 +26,9 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /수험번호/);
   assert.match(page, /전국석차/);
   assert.match(page, /캠퍼스석차/);
+  assert.match(page, /score\.nationalRank - previousScore\.nationalRank/);
+  assert.match(page, /score\.campusRank - previousScore\.campusRank/);
+  assert.match(page, /className="rank-cell"/);
   assert.match(page, /const initialExams: Exam\[\] = \[\]/);
   assert.doesNotMatch(page, /const (feb|may): Score\[\]/);
   assert.doesNotMatch(page, /SkeletonPreview|codex-preview/);
