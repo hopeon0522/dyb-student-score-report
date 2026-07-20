@@ -97,7 +97,7 @@ function HorizontalProgressBar({ label, value, unit, width, color, delta, rank =
   </div>;
 }
 
-function ScoreProgressTrack({ score, maxScore, metric, delta }: { score: number; maxScore: number; metric?: PdfMetric; delta?: number }) {
+function ScoreProgressTrack({ score, maxScore, metric }: { score: number; maxScore: number; metric?: PdfMetric }) {
   const position = (value: number) => Math.min(96, Math.max(4, (value / maxScore) * 100));
   return <div className="score-progress-wrap">
     <div className="score-progress-single">
@@ -106,7 +106,6 @@ function ScoreProgressTrack({ score, maxScore, metric, delta }: { score: number;
       <div className="score-single-track"><i style={{ width: `${Math.min(100, Math.max(0, (score / maxScore) * 100))}%` }} /></div>
       <div className="score-axis"><span>0</span><span>{maxScore}</span></div>
     </div>
-    <span className="horizontal-delta">{delta !== undefined && <Delta value={delta} />}</span>
   </div>;
 }
 
@@ -346,11 +345,11 @@ export default function Home() {
                 const referenceMetric = score && trendMetric !== "campusRank" ? score.pdfMetrics?.[trendMetric as PdfMetricKey] : undefined;
                 const rankMetric = score?.pdfMetrics?.total;
                 return <div className={`horizontal-exam ${score ? "" : "missing"}`} key={exam.id}>
-                  <strong>{exam.label}</strong>
+                  <div className="horizontal-exam-heading"><strong>{exam.label}</strong>{score && trendMetric !== "campusRank" && change !== undefined && <Delta value={change} />}</div>
                   {!score ? <div className="horizontal-no-data">데이터 없음</div> : trendMetric === "campusRank" ? <div className="horizontal-series-list rank-series-list">
                     <HorizontalProgressBar label="캠퍼스 석차" value={score.campusRank} unit="위" width={rankMetric ? 100 - rankMetric.campusPercentile : 0} color="campus-bar" delta={change} rank displayValue={rankMetric ? `${score.campusRank.toLocaleString()}위 (${rankMetric.campusPercentile.toFixed(1)}%)` : undefined} percentileAxis />
                     <HorizontalProgressBar label="전국 석차" value={score.nationalRank} unit="위" width={rankMetric ? 100 - rankMetric.nationalPercentile : 0} color="national-bar" delta={previousScore ? score.nationalRank - previousScore.nationalRank : undefined} rank displayValue={rankMetric ? `${score.nationalRank.toLocaleString()}위 (${rankMetric.nationalPercentile.toFixed(1)}%)` : undefined} percentileAxis />
-                  </div> : <ScoreProgressTrack score={score[trendMetric]} maxScore={activeTrend.max} metric={referenceMetric} delta={change} />}
+                  </div> : <ScoreProgressTrack score={score[trendMetric]} maxScore={activeTrend.max} metric={referenceMetric} />}
                 </div>})}
             </div>
           </section>

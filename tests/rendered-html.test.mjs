@@ -52,6 +52,9 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /score-track-marker average/);
   assert.match(page, /score-track-marker top-ten/);
   assert.match(page, /score-track-marker student/);
+  assert.match(page, /className="horizontal-exam-heading"/);
+  assert.match(page, /trendMetric !== "campusRank" && change !== undefined/);
+  assert.doesNotMatch(page, /metric=\{referenceMetric\} delta=\{change\}/);
   assert.match(page, /maxScore=\{activeTrend\.max\}/);
   assert.match(page, /campus-bar/);
   assert.match(page, /national-bar/);
