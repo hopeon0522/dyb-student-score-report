@@ -91,6 +91,14 @@ test("uses the finished Korean site metadata", async () => {
   assert.doesNotMatch(layout, /Starter Project|Your site is taking shape/);
 });
 
+test("places the student score label below the comparison track", async () => {
+  const css = await readFile(cssUrl, "utf8");
+
+  assert.match(css, /\.score-track-marker\.student\{top:68px/);
+  assert.match(css, /\.score-track-marker\.student::before/);
+  assert.match(css, /border-bottom:6px solid currentColor/);
+});
+
 test("aligns rank headings with rank values", async () => {
   const css = await readFile(cssUrl, "utf8");
   assert.match(css, /th:nth-child\(6\),th:nth-child\(7\)\{padding-right:90px\}/);
