@@ -24,3 +24,26 @@ button,input { font:inherit; } button { cursor:pointer; }
 .metric-card.blue .comparison-track>i{background:#2f8cff}
 .metric-card.coral .comparison-track>i{background:#ff625a}
 .metric-card.green .comparison-track>i{background:#18a667}
+
+/* Refined score summary spacing and paired rank presentation. */
+.profile-main>div{display:flex;flex-direction:column;align-items:flex-start}
+.profile-total-button{border:1px solid #dfe3e9;background:#f7f8fa;color:#6d7480;border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:13px;font-weight:850;line-height:1}
+.profile-total-button.active{border-color:#2f8cff;background:#eaf4ff;color:#2f8cff}
+.latest-summary .score-comparison{margin-top:52px}
+.latest-summary .comparison-track>i{background:#ce0712}
+.comparison-marker{bottom:20px}
+.comparison-marker b{font-size:11px!important;line-height:1.2;letter-spacing:.01em}
+.comparison-marker em{font-size:13px;margin-top:5px;line-height:1.1}
+.metric-card .comparison-marker b{font-size:10px!important}
+.metric-card .comparison-marker em{font-size:12px;margin-top:5px}
+.rank-card{cursor:pointer}
+.rank-card-head{align-items:center!important}
+.rank-card-head>small{font-size:10px;color:#969ba6;font-weight:700}
+.rank-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.rank-summary{min-width:0;padding:0 5px;display:flex;flex-direction:column;align-items:flex-start}
+.rank-summary+ .rank-summary{border-left:1px solid #eceef2;padding-left:15px}
+.rank-summary>span:first-child{font-size:11px;color:#7b8290;font-weight:750}
+.rank-summary>b{font-size:22px;margin-top:5px;line-height:1}
+.rank-summary>b small{font-size:11px;color:#9096a0;margin-left:2px}
+.rank-summary>em{font-size:10px;color:#8e95a0;font-style:normal;margin-top:5px}
+.rank-summary>.delta{font-size:10px;padding:3px 6px;margin-top:7px}

@@ -44,6 +44,9 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // PDF.js only uses canvas for optional server-side rendering. PDF parsing
+    // happens after a browser upload, so keep the native canvas module external.
+    ssr: { external: ["canvas"] },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

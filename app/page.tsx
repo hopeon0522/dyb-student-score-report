@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { parsePdfReport, PdfMetric, PdfMetricKey, PdfStudentRecord } from "./pdf-parser";
+import type { PdfMetric, PdfMetricKey, PdfStudentRecord } from "./pdf-parser";
 
 type Score = {
   name: string;
@@ -176,6 +176,7 @@ export default function Home() {
         if (/\.pdf$/i.test(file.name)) {
           const matchingIndex = nextExams.findIndex((exam) => fileBase(exam.filename) === fileBase(file.name));
           if (matchingIndex < 0) throw new Error("같은 이름의 엑셀 성적표를 먼저 업로드해 주세요.");
+          const { parsePdfReport } = await import("./pdf-parser");
           const parsed = await parsePdfReport(await file.arrayBuffer());
           const paired = pairPdf(nextExams[matchingIndex], file.name, parsed.students, parsed.period);
           nextExams = nextExams.map((exam, index) => index === matchingIndex ? paired : exam);
@@ -296,8 +297,8 @@ export default function Home() {
           <nav className="exam-tabs card" aria-label="시험 선택">{history.map(({ exam, score }) => <button key={exam.id} className={focusedItem?.exam.id === exam.id ? "active" : ""} aria-pressed={focusedItem?.exam.id === exam.id} onClick={() => setSelectedExamId(exam.id)}><b>{exam.label}</b><small>{!score ? "데이터 없음" : exam.pdfFilename ? "XLS + PDF" : "XLS"}</small></button>)}</nav>
 
           <section className="profile card">
-            <div className="profile-main"><span className="profile-avatar">{selected?.name.slice(0,1)}</span><div><div className="profile-name"><h2>{selected?.name}</h2><span>{selected?.level}</span></div><p>{selected?.grade} · 수험번호 {selected?.studentId}</p></div></div>
-            <div className="latest-summary"><span>{focusedItem?.exam.label || "선택 시험"}</span><div className="total-line"><button className={trendMetric === "total" ? "active" : ""} onClick={() => setTrendMetric("total")}>TOTAL</button><b>{focusedScore?.total ?? "—"}<small>/120</small></b>{focusedPrevious && focusedScore ? <Delta value={focusedScore.total - focusedPrevious.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>{focusedScore && <ComparisonBar metric={focusedScore.pdfMetrics?.total} score={focusedScore.total} maxScore={120} />}</div>
+            <div className="profile-main"><span className="profile-avatar">{selected?.name.slice(0,1)}</span><div><button className={`profile-total-button ${trendMetric === "total" ? "active" : ""}`} onClick={() => setTrendMetric("total")}>TOTAL</button><div className="profile-name"><h2>{selected?.name}</h2><span>{selected?.level}</span></div><p>{selected?.grade} · 수험번호 {selected?.studentId}</p></div></div>
+            <div className="latest-summary"><span>{focusedItem?.exam.label || "선택 시험"}</span><div className="total-line"><b>{focusedScore?.total ?? "—"}<small>/120</small></b>{focusedPrevious && focusedScore ? <Delta value={focusedScore.total - focusedPrevious.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>{focusedScore && <ComparisonBar metric={focusedScore.pdfMetrics?.total} score={focusedScore.total} maxScore={120} />}</div>
           </section>
 
           <section className="metric-grid">
@@ -305,12 +306,18 @@ export default function Home() {
               ["listening", "Listening", focusedScore?.listening, focusedPrevious ? (focusedScore?.listening || 0) - focusedPrevious.listening : 0, "blue"],
               ["grammar", "Grammar", focusedScore?.grammar, focusedPrevious ? (focusedScore?.grammar || 0) - focusedPrevious.grammar : 0, "coral"],
               ["reading", "Reading", focusedScore?.reading, focusedPrevious ? (focusedScore?.reading || 0) - focusedPrevious.reading : 0, "green"],
-              ["campusRank", "캠퍼스 석차", focusedScore?.campusRank, focusedPrevious ? (focusedScore?.campusRank || 0) - focusedPrevious.campusRank : 0, "violet"],
             ].map(([metric, label, value, delta, color]) => {
               const scoreMetric = metric as TrendMetric;
-              const pdfMetric = scoreMetric === "campusRank" ? focusedScore?.pdfMetrics?.total : focusedScore?.pdfMetrics?.[scoreMetric as PdfMetricKey];
-              return <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(scoreMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>{label === "캠퍼스 석차" ? "위" : "/40"}</small>{label === "캠퍼스 석차" && pdfMetric && <em className="card-percentile">({pdfMetric.campusPercentile.toFixed(1)}%)</em>}</b></div>{focusedPrevious && focusedScore ? <Delta value={Number(delta)} rank={label === "캠퍼스 석차"} /> : <span className="delta neutral">비교 데이터 없음</span>}{label === "캠퍼스 석차" ? <div className="meter"><i style={{width: `${Math.max(8, 100 - Number(value || 100) / 2)}%`}} /></div> : value !== undefined && <ComparisonBar metric={pdfMetric} score={Number(value)} maxScore={40} />}</button>;
+              const pdfMetric = focusedScore?.pdfMetrics?.[scoreMetric as PdfMetricKey];
+              return <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(scoreMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>/40</small></b></div>{focusedPrevious && focusedScore ? <Delta value={Number(delta)} /> : <span className="delta neutral">비교 데이터 없음</span>}{value !== undefined && <ComparisonBar metric={pdfMetric} score={Number(value)} maxScore={40} />}</button>;
             })}
+            <button aria-pressed={trendMetric === "campusRank"} onClick={() => setTrendMetric("campusRank")} className={`metric-card rank-card card violet ${trendMetric === "campusRank" ? "active" : ""}`}>
+              <div className="rank-card-head"><span>석차</span><small>전국 · 캠퍼스</small></div>
+              <div className="rank-card-grid">
+                <div className="rank-summary"><span>전국 석차</span><b>{focusedScore?.nationalRank?.toLocaleString() ?? "—"}<small>위</small></b><em>{focusedScore?.pdfMetrics ? `(${focusedScore.pdfMetrics.total.nationalPercentile.toFixed(1)}%)` : "백분위 없음"}</em>{focusedPrevious && focusedScore && <Delta value={focusedScore.nationalRank - focusedPrevious.nationalRank} rank />}</div>
+                <div className="rank-summary"><span>캠퍼스 석차</span><b>{focusedScore?.campusRank ?? "—"}<small>위</small></b><em>{focusedScore?.pdfMetrics ? `(${focusedScore.pdfMetrics.total.campusPercentile.toFixed(1)}%)` : "백분위 없음"}</em>{focusedPrevious && focusedScore && <Delta value={focusedScore.campusRank - focusedPrevious.campusRank} rank />}</div>
+              </div>
+            </button>
           </section>
 
           <section className="trend card">
