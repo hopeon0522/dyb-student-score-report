@@ -80,9 +80,12 @@ function studentFromLines(lines: string[]): PdfStudentRecord | null {
 }
 
 export async function parsePdfReport(buffer: ArrayBuffer): Promise<ParsedPdfReport> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // PDF.js 5 uses newer Promise APIs that older Safari/WebKit versions do not
+  // implement. The v3 legacy build keeps uploads working across those browsers.
+  const importedPdfjs = await import("pdfjs-dist/legacy/build/pdf.js");
+  const pdfjs = (importedPdfjs.default || importedPdfjs) as typeof importedPdfjs;
   if (typeof window !== "undefined") {
-    const worker = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
+    const worker = await import("pdfjs-dist/legacy/build/pdf.worker.min.js?url");
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
   }
   const document = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;

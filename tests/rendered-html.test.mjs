@@ -74,8 +74,8 @@ test("parses paired PDF report fields in the browser", async () => {
   const parser = await readFile(pdfParserUrl, "utf8");
   const packageJson = JSON.parse(await readFile(packageUrl, "utf8"));
 
-  assert.equal(packageJson.dependencies["pdfjs-dist"], "5.6.205");
-  assert.match(parser, /pdfjs-dist\/legacy\/build\/pdf\.mjs/);
+  assert.equal(packageJson.dependencies["pdfjs-dist"], "3.11.174");
+  assert.match(parser, /pdfjs-dist\/legacy\/build\/pdf\.js/);
   assert.match(parser, /previousScore/);
   assert.match(parser, /average/);
   assert.match(parser, /top10Average/);
