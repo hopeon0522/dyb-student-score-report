@@ -42,8 +42,14 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /campusPercentile\.toFixed\(1\)/);
   assert.match(page, /profile-total-button/);
   assert.match(page, /rank-card-grid/);
-  assert.match(page, /전국 · 캠퍼스/);
+  assert.doesNotMatch(page, /전국 · 캠퍼스/);
   assert.doesNotMatch(page, /label === "캠퍼스 석차" \? <div className="meter"/);
+  assert.match(page, /회 미응시/);
+  assert.match(page, /attended.*yearExams\.length/);
+  assert.match(page, /className="chart-bars"/);
+  assert.match(page, /average-bar/);
+  assert.match(page, /top-ten-bar/);
+  assert.doesNotMatch(page, />파일 추가</);
   assert.match(page, /className="exam-tabs card"/);
   assert.match(page, /<ComparisonBar/);
   assert.match(page, /전체 평균/);

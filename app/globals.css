@@ -47,3 +47,15 @@ button,input { font:inherit; } button { cursor:pointer; }
 .rank-summary>b small{font-size:11px;color:#9096a0;margin-left:2px}
 .rank-summary>em{font-size:10px;color:#8e95a0;font-style:normal;margin-top:5px}
 .rank-summary>.delta{font-size:10px;padding:3px 6px;margin-top:7px}
+
+/* Progress reference bars and elevated Total control. */
+.profile{position:relative;padding-top:42px}
+.profile-total-button{position:absolute;top:11px;left:24px;margin:0}
+.dot.average{background:#f3a44f}
+.dot.top-ten{background:#37b5a5}
+.chart-bars{display:flex;align-items:flex-end;gap:5px}
+.reference-bar{width:26px;border-radius:7px 7px 2px 2px;box-shadow:none}
+.reference-bar.average-bar{background:#f3a44f}
+.reference-bar.top-ten-bar{background:#37b5a5}
+.reference-bar b{max-width:100%;overflow:hidden;font-size:8px;line-height:1;color:#fff;margin-top:6px;letter-spacing:-.04em}
+@media(max-width:480px){.profile-total-button{left:18px}.legend{display:none}}

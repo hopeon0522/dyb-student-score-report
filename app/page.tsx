@@ -165,6 +165,10 @@ export default function Home() {
     return Math.max(28, (score[trendMetric] / activeTrend.max) * 150);
   }
 
+  function referenceHeight(value: number) {
+    return Math.max(28, (value / activeTrend.max) * 150);
+  }
+
   async function onUpload(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files || [])];
     let nextExams = exams;
@@ -284,9 +288,10 @@ export default function Home() {
               const latest = [...yearExams].reverse().find((exam) => exam.rows.some((row) => row.studentId === student.studentId));
               const score = latest?.rows.find((row) => row.studentId === student.studentId);
               const gaps = yearExams.filter((exam) => !exam.rows.some((row) => row.studentId === student.studentId)).length;
+              const attended = yearExams.length - gaps;
               return <button key={student.studentId} className={`student-row ${selected?.studentId === student.studentId ? "active" : ""}`} onClick={() => setSelectedId(student.studentId)}>
                 <span className="avatar">{student.name.slice(0,1)}</span><span className="student-meta"><b>{student.name}</b><small>{student.grade} · {student.level} · {student.studentId}</small></span>
-                <span className="latest-score"><b>{score?.total ?? "—"}</b><small>{gaps ? `${gaps}회 공백` : "전체 응시"}</small></span>
+                <span className="latest-score"><b>{score?.total ?? "—"}</b><small>{gaps ? `${gaps}회 미응시` : "전체 응시"} ({attended}/{yearExams.length})</small></span>
               </button>;
             })}
           </div>
@@ -312,7 +317,7 @@ export default function Home() {
               return <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(scoreMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>/40</small></b></div>{focusedPrevious && focusedScore ? <Delta value={Number(delta)} /> : <span className="delta neutral">비교 데이터 없음</span>}{value !== undefined && <ComparisonBar metric={pdfMetric} score={Number(value)} maxScore={40} />}</button>;
             })}
             <button aria-pressed={trendMetric === "campusRank"} onClick={() => setTrendMetric("campusRank")} className={`metric-card rank-card card violet ${trendMetric === "campusRank" ? "active" : ""}`}>
-              <div className="rank-card-head"><span>석차</span><small>전국 · 캠퍼스</small></div>
+              <div className="rank-card-head"><span>석차</span></div>
               <div className="rank-card-grid">
                 <div className="rank-summary"><span>전국 석차</span><b>{focusedScore?.nationalRank?.toLocaleString() ?? "—"}<small>위</small></b><em>{focusedScore?.pdfMetrics ? `(${focusedScore.pdfMetrics.total.nationalPercentile.toFixed(1)}%)` : "백분위 없음"}</em>{focusedPrevious && focusedScore && <Delta value={focusedScore.nationalRank - focusedPrevious.nationalRank} rank />}</div>
                 <div className="rank-summary"><span>캠퍼스 석차</span><b>{focusedScore?.campusRank ?? "—"}<small>위</small></b><em>{focusedScore?.pdfMetrics ? `(${focusedScore.pdfMetrics.total.campusPercentile.toFixed(1)}%)` : "백분위 없음"}</em>{focusedPrevious && focusedScore && <Delta value={focusedScore.campusRank - focusedPrevious.campusRank} rank />}</div>
@@ -321,20 +326,21 @@ export default function Home() {
           </section>
 
           <section className="trend card">
-            <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{activeTrend.label}</span></div></div>
+            <div className="section-title"><div><p>PROGRESS</p><h2>{activeTrend.label} 성적 변화</h2></div><div className="legend"><span><i className="dot total"/>{activeTrend.label}</span>{trendMetric !== "campusRank" && <><span><i className="dot average"/>전체 평균</span><span><i className="dot top-ten"/>10% 평균</span></>}</div></div>
             <div className="timeline">
               {history.map(({ exam, score }, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
                 const change = score && previousScore ? score[trendMetric] - previousScore[trendMetric] : undefined;
+                const referenceMetric = score && trendMetric !== "campusRank" ? score.pdfMetrics?.[trendMetric as PdfMetricKey] : undefined;
                 return <div className={`exam-column ${score ? "" : "missing"}`} key={exam.id}>
-                <div className="chart-zone">{score ? <div className="chart-stack">{change !== undefined && <Delta value={change} rank={trendMetric === "campusRank"} />}<div className="bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
+                <div className="chart-zone">{score ? <div className="chart-stack">{change !== undefined && <Delta value={change} rank={trendMetric === "campusRank"} />}<div className="chart-bars"><div className="bar student-bar" style={{height:`${trendHeight(score)}px`}}><b>{score[trendMetric]}{activeTrend.unit}</b></div>{referenceMetric && <><div className="bar reference-bar average-bar" style={{height:`${referenceHeight(referenceMetric.average)}px`}}><b>{referenceMetric.average}</b></div><div className="bar reference-bar top-ten-bar" style={{height:`${referenceHeight(referenceMetric.top10Average)}px`}}><b>{referenceMetric.top10Average}</b></div></>}</div></div> : <div className="no-bar"><span>—</span><b>데이터 없음</b></div>}</div>
                 <strong>{exam.label}</strong><small>{exam.rows.length}명 등록</small>{index < history.length - 1 && <i className="connector"/>}
               </div>})}
             </div>
           </section>
 
           <section className="history card">
-            <div className="section-title"><div><p>DETAIL</p><h2>시험별 상세 기록</h2></div><button onClick={() => fileRef.current?.click()}>파일 추가</button></div>
+            <div className="section-title"><div><p>DETAIL</p><h2>시험별 상세 기록</h2></div></div>
             <div className="table-wrap"><table><thead><tr><th>시험명</th><th>Listening</th><th>Grammar</th><th>Reading</th><th>TOTAL</th><th>전국 석차</th><th>캠퍼스 석차</th></tr></thead><tbody>
               {history.map(({exam,score}, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
