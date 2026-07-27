@@ -123,3 +123,6 @@ button,input { font:inherit; } button { cursor:pointer; }
 .comparison-student-marker{position:absolute;top:16px;transform:translateX(-100%);display:flex;align-items:center;gap:4px;color:#ef4e4e;white-space:nowrap;line-height:1;z-index:2}
 .comparison-student-marker em{font-size:12px;font-style:normal;font-weight:900}
 .comparison-student-marker::after{content:"";width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid currentColor}
+
+/* Emphasize the maximum score at the right end of each Progress axis. */
+.score-axis>span:last-child{font-size:12px;font-weight:850}
