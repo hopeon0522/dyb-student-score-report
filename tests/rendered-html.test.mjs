@@ -71,6 +71,9 @@ test("contains the student report and upload workflow", async () => {
   assert.doesNotMatch(page, />파일 추가</);
   assert.match(page, /className="exam-tabs card"/);
   assert.match(page, /<ComparisonBar/);
+  assert.match(page, /showStudentMarker/);
+  assert.match(page, /className="comparison-student-marker"/);
+  assert.match(page, /maxScore=\{40\} showStudentMarker/);
   assert.match(page, /전체 평균/);
   assert.match(page, /10% 평균/);
   assert.match(page, /검색어 지우기/);

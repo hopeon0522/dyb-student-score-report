@@ -116,3 +116,9 @@ button,input { font:inherit; } button { cursor:pointer; }
 /* Keep the collapse control entirely outside the scrollable student card. */
 .student-panel-toggle{right:-20px;width:20px;border-left:0;border-radius:0 9px 9px 0;font-size:22px}
 @media(max-width:800px){.student-panel-toggle{right:-16px;width:16px;font-size:19px}}
+
+/* Compact student-score marker used only in Listening, Grammar and Reading cards. */
+.metric-card .score-comparison:has(.comparison-student-marker){padding-bottom:25px}
+.comparison-student-marker{position:absolute;top:16px;transform:translateX(-100%);display:flex;align-items:center;gap:4px;color:#ef4e4e;white-space:nowrap;line-height:1;z-index:2}
+.comparison-student-marker em{font-size:12px;font-style:normal;font-weight:900}
+.comparison-student-marker::after{content:"";width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid currentColor}

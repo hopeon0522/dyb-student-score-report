@@ -78,12 +78,13 @@ function Delta({ value, rank = false }: { value: number; rank?: boolean }) {
   return <span className={`delta ${improved ? "up" : "down"}`}>{improved ? "↑" : "↓"} {Math.abs(value).toLocaleString()}{rank ? "위" : "점"}</span>;
 }
 
-function ComparisonBar({ metric, score, maxScore }: { metric?: PdfMetric; score: number; maxScore: number }) {
+function ComparisonBar({ metric, score, maxScore, showStudentMarker = false }: { metric?: PdfMetric; score: number; maxScore: number; showStudentMarker?: boolean }) {
   const position = (value: number) => `${Math.min(100, Math.max(0, (value / maxScore) * 100))}%`;
   const markerPosition = (value: number) => `${Math.min(94, Math.max(6, (value / maxScore) * 100))}%`;
   return <div className={`score-comparison ${metric ? "ready" : "pending"}`}>
     <div className="comparison-track"><i style={{ width: position(score) }} />
       {metric && <><span className="comparison-marker average" style={{ left: markerPosition(metric.average) }}><b>전체 평균</b><em>{metric.average}</em></span><span className="comparison-marker top-ten" style={{ left: markerPosition(metric.top10Average) }}><b>10% 평균</b><em>{metric.top10Average}</em></span></>}
+      {showStudentMarker && <span className="comparison-student-marker" style={{ left: markerPosition(score) }}><em>{score}</em></span>}
     </div>
     {!metric && <small>동일 이름의 PDF를 연결하면 평균 비교가 표시됩니다.</small>}
   </div>;
@@ -331,7 +332,7 @@ export default function Home() {
             ].map(([metric, label, value, delta, color]) => {
               const scoreMetric = metric as TrendMetric;
               const pdfMetric = focusedScore?.pdfMetrics?.[scoreMetric as PdfMetricKey];
-              return <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(scoreMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>/40</small></b></div>{focusedPrevious && focusedScore ? <Delta value={Number(delta)} /> : <span className="delta neutral">비교 데이터 없음</span>}{value !== undefined && <ComparisonBar metric={pdfMetric} score={Number(value)} maxScore={40} />}</button>;
+              return <button aria-pressed={trendMetric === metric} onClick={() => setTrendMetric(scoreMetric)} className={`metric-card card ${color} ${trendMetric === metric ? "active" : ""}`} key={String(label)}><div><span>{label}</span><b>{value ?? "—"}<small>/40</small></b></div>{focusedPrevious && focusedScore ? <Delta value={Number(delta)} /> : <span className="delta neutral">비교 데이터 없음</span>}{value !== undefined && <ComparisonBar metric={pdfMetric} score={Number(value)} maxScore={40} showStudentMarker />}</button>;
             })}
             <button aria-pressed={trendMetric === "campusRank"} onClick={() => setTrendMetric("campusRank")} className={`metric-card rank-card card violet ${trendMetric === "campusRank" ? "active" : ""}`}>
               <div className="rank-card-head"><span>석차</span></div>
