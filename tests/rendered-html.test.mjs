@@ -121,6 +121,7 @@ test("aligns rank headings with rank values", async () => {
   assert.match(css, /\.horizontal-track\{height:27px/);
   assert.match(css, /\.student-panel-toggle\{right:-20px;width:20px;border-left:0/);
   assert.match(css, /\.score-axis>span:last-child\{font-size:12px/);
+  assert.match(css, /\.rank-summary>em\{font-size:12px/);
 });
 
 test("parses paired PDF report fields in the browser", async () => {

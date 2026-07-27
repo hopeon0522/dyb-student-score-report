@@ -45,7 +45,7 @@ button,input { font:inherit; } button { cursor:pointer; }
 .rank-summary>span:first-child{font-size:11px;color:#7b8290;font-weight:750}
 .rank-summary>b{font-size:22px;margin-top:5px;line-height:1}
 .rank-summary>b small{font-size:11px;color:#9096a0;margin-left:2px}
-.rank-summary>em{font-size:10px;color:#8e95a0;font-style:normal;margin-top:5px}
+.rank-summary>em{font-size:12px;color:#8e95a0;font-style:normal;margin-top:5px}
 .rank-summary>.delta{font-size:10px;padding:3px 6px;margin-top:7px}
 
 /* Progress reference bars and elevated Total control. */
