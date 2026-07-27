@@ -118,6 +118,7 @@ export default function Home() {
   const [activeYear, setActiveYear] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("total");
+  const [isStudentPanelCollapsed, setIsStudentPanelCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const restoreRef = useRef<HTMLInputElement>(null);
@@ -289,7 +290,8 @@ export default function Home() {
 
       {!!years.length && <nav className="year-tabs" aria-label="연도 선택">{years.map((year) => <button key={year} className={activeYear === year ? "active" : ""} aria-pressed={activeYear === year} onClick={() => { setActiveYear(year); setQuery(""); }}>{year}년</button>)}</nav>}
 
-      <section className="workspace">
+      <section className={`workspace ${isStudentPanelCollapsed ? "students-collapsed" : ""}`}>
+        {!isStudentPanelCollapsed && <div className="student-panel-shell">
         <aside className="student-panel card">
           <div className="panel-heading"><div><p>STUDENTS</p><h2>학생 목록</h2></div><span>{filtered.length}명</span></div>
           <label className="search"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="이름 또는 수험번호 검색" />{query && <button type="button" aria-label="검색어 지우기" onClick={() => setQuery("")}>×</button>}</label>
@@ -307,6 +309,10 @@ export default function Home() {
             })}
           </div>
         </aside>
+        <button className="student-panel-toggle" type="button" aria-label="학생 목록 접기" title="학생 목록 접기" onClick={() => setIsStudentPanelCollapsed(true)}><span aria-hidden="true">‹</span></button>
+        </div>}
+
+        {isStudentPanelCollapsed && <button className="student-panel-expand" type="button" aria-label="학생 목록 펼치기" title="학생 목록 펼치기" onClick={() => setIsStudentPanelCollapsed(false)}><span aria-hidden="true">›</span><b>학생 목록</b></button>}
 
         <div className="report">
           {!selected ? <section className="empty-report card"><span className="empty-icon">↥</span><p>GET STARTED</p><h2>엑셀 성적표를 먼저 업로드해 주세요</h2><span>같은 이름의 PDF를 이어서 올리면 평균과 백분위까지 연결됩니다.</span><button onClick={() => fileRef.current?.click()}>＋ 성적표 선택</button><small>업로드한 파일은 서버로 전송되지 않고 현재 브라우저에서만 처리됩니다.</small></section> : <>

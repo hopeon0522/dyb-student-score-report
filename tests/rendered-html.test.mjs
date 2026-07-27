@@ -74,6 +74,10 @@ test("contains the student report and upload workflow", async () => {
   assert.match(page, /전체 평균/);
   assert.match(page, /10% 평균/);
   assert.match(page, /검색어 지우기/);
+  assert.match(page, /isStudentPanelCollapsed/);
+  assert.match(page, /학생 목록 접기/);
+  assert.match(page, /학생 목록 펼치기/);
+  assert.match(page, /students-collapsed/);
   assert.match(page, /view === "settings"/);
   assert.match(page, /연도 선택/);
   assert.match(page, /setActiveYear/);
