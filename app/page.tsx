@@ -103,7 +103,7 @@ function ScoreProgressTrack({ score, maxScore, metric }: { score: number; maxSco
   return <div className="score-progress-wrap">
     <div className="score-progress-single">
       {metric && <><span className="score-track-marker average" style={{ left: `${position(metric.average)}%` }}><b>전체 평균</b><em>{metric.average}</em></span><span className="score-track-marker top-ten" style={{ left: `${position(metric.top10Average)}%` }}><b>상위 10% 평균</b><em>{metric.top10Average}</em></span></>}
-      <span className="score-track-marker student" style={{ left: `${position(score)}%` }}><b>학생점수</b><em>{score}</em></span>
+      <span className="score-track-marker student" style={{ left: `${position(score)}%` }}><em>{score}</em></span>
       <div className="score-single-track"><i style={{ width: `${Math.min(100, Math.max(0, (score / maxScore) * 100))}%` }} /></div>
       <div className="score-axis"><span>0</span><span>{maxScore}</span></div>
     </div>

@@ -101,11 +101,14 @@ test("uses the finished Korean site metadata", async () => {
   assert.doesNotMatch(layout, /Starter Project|Your site is taking shape/);
 });
 
-test("places the student score label below the comparison track", async () => {
+test("places a compact student score marker below the comparison track", async () => {
   const css = await readFile(cssUrl, "utf8");
+  const page = await readFile(pageUrl, "utf8");
 
-  assert.match(css, /\.score-track-marker\.student\{top:68px/);
-  assert.match(css, /\.score-track-marker\.student::before/);
+  assert.match(page, /className="score-track-marker student"[^>]*><em>\{score\}<\/em>/);
+  assert.doesNotMatch(page, /className="score-track-marker student"[^>]*><b>학생점수<\/b>/);
+  assert.match(css, /\.score-track-marker\.student\{top:68px;transform:translateX\(-100%\);flex-direction:row/);
+  assert.match(css, /\.score-track-marker\.student::after/);
   assert.match(css, /border-bottom:6px solid currentColor/);
 });
 
