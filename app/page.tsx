@@ -2,6 +2,8 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { PdfMetric, PdfMetricKey, PdfStudentRecord } from "./pdf-parser";
+import "./student-design.css";
+import "./learning-journal.css";
 
 type Score = {
   name: string;
@@ -80,7 +82,7 @@ function Delta({ value, rank = false }: { value: number; rank?: boolean }) {
 
 function ComparisonBar({ metric, score, maxScore, showStudentMarker = false }: { metric?: PdfMetric; score: number; maxScore: number; showStudentMarker?: boolean }) {
   const position = (value: number) => `${Math.min(100, Math.max(0, (value / maxScore) * 100))}%`;
-  const markerPosition = (value: number) => `${Math.min(94, Math.max(6, (value / maxScore) * 100))}%`;
+  const markerPosition = (value: number) => `clamp(40px, ${Math.min(100, Math.max(0, (value / maxScore) * 100))}%, calc(100% - 40px))`;
   return <div className={`score-comparison ${metric ? "ready" : "pending"}`}>
     <div className="comparison-track"><i style={{ width: position(score) }} />
       {metric && <><span className="comparison-marker average" style={{ left: markerPosition(metric.average) }}><b>전체 평균</b><em>{metric.average}</em></span><span className="comparison-marker top-ten" style={{ left: markerPosition(metric.top10Average) }}><b>10% 평균</b><em>{metric.top10Average}</em></span></>}
@@ -102,7 +104,7 @@ function ScoreProgressTrack({ score, maxScore, metric }: { score: number; maxSco
   const position = (value: number) => Math.min(96, Math.max(4, (value / maxScore) * 100));
   return <div className="score-progress-wrap">
     <div className="score-progress-single">
-      {metric && <><span className="score-track-marker average" style={{ left: `${position(metric.average)}%` }}><b>전체 평균</b><em>{metric.average}</em></span><span className="score-track-marker top-ten" style={{ left: `${position(metric.top10Average)}%` }}><b>상위 10% 평균</b><em>{metric.top10Average}</em></span></>}
+      {metric && <><span className="score-track-marker average" style={{ left: `clamp(44px, ${position(metric.average)}%, calc(100% - 44px))` }}><b>전체 평균</b><em>{metric.average}</em></span><span className="score-track-marker top-ten" style={{ left: `clamp(54px, ${position(metric.top10Average)}%, calc(100% - 54px))` }}><b>상위 10% 평균</b><em>{metric.top10Average}</em></span></>}
       <span className="score-track-marker student" style={{ left: `${position(score)}%` }}><em>{score}</em></span>
       <div className="score-single-track"><i style={{ width: `${Math.min(100, Math.max(0, (score / maxScore) * 100))}%` }} /></div>
       <div className="score-axis"><span>0</span><span>{maxScore}</span></div>
@@ -269,7 +271,7 @@ export default function Home() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${view === "main" ? "student-view" : ""}`}>
       <header className="topbar">
         <div className="brand"><span className="brand-mark">D</span><strong>DYB SCORE</strong></div>
         <div className="header-stats"><div><b>{students.length}</b><span>총원</span></div><div><b>{yearExams.length}</b><span>누적 시험</span></div></div>
@@ -278,7 +280,7 @@ export default function Home() {
         <input ref={restoreRef} hidden type="file" accept="application/json,.json" onChange={restoreBackup} />
       </header>
 
-      {uploadMessage && <div className="toast"><span>✓</span>{uploadMessage}<button onClick={() => setUploadMessage("")}>×</button></div>}
+      {uploadMessage && <div className="toast" role="status"><span aria-hidden="true">i</span>{uploadMessage}<button aria-label="알림 닫기" onClick={() => setUploadMessage("")}>×</button></div>}
 
       {view === "settings" ? <section className="settings-workspace">
         <section className="settings-page card" aria-label="데이터 설정">
@@ -292,18 +294,18 @@ export default function Home() {
       {!!years.length && <nav className="year-tabs" aria-label="연도 선택">{years.map((year) => <button key={year} className={activeYear === year ? "active" : ""} aria-pressed={activeYear === year} onClick={() => { setActiveYear(year); setQuery(""); }}>{year}년</button>)}</nav>}
 
       <section className={`workspace ${isStudentPanelCollapsed ? "students-collapsed" : ""}`}>
-        {!isStudentPanelCollapsed && <div className="student-panel-shell">
+        {!isStudentPanelCollapsed && <div className="student-panel-shell" id="students">
         <aside className="student-panel card">
           <div className="panel-heading"><div><p>STUDENTS</p><h2>학생 목록</h2></div><span>{filtered.length}명</span></div>
-          <label className="search"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="이름 또는 수험번호 검색" />{query && <button type="button" aria-label="검색어 지우기" onClick={() => setQuery("")}>×</button>}</label>
+          <label className="search"><span>⌕</span><input aria-label="학생 검색" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="이름 또는 수험번호 검색" />{query && <button type="button" aria-label="검색어 지우기" onClick={() => setQuery("")}>×</button>}</label>
           <div className="student-list">
-            {!filtered.length && <div className="student-empty"><span>↥</span><b>등록된 학생이 없습니다</b><small>성적표를 업로드하면 학생 목록이 생성됩니다.</small></div>}
+            {!filtered.length && <div className="student-empty"><b>{query ? "검색 결과가 없습니다" : "등록된 학생이 없습니다"}</b><small>{query ? "이름 또는 수험번호를 다시 확인해 주세요." : "성적표를 업로드하면 학생 목록이 생성됩니다."}</small></div>}
             {filtered.map((student) => {
               const latest = [...yearExams].reverse().find((exam) => exam.rows.some((row) => row.studentId === student.studentId));
               const score = latest?.rows.find((row) => row.studentId === student.studentId);
               const gaps = yearExams.filter((exam) => !exam.rows.some((row) => row.studentId === student.studentId)).length;
               const attended = yearExams.length - gaps;
-              return <button key={student.studentId} className={`student-row ${selected?.studentId === student.studentId ? "active" : ""}`} onClick={() => setSelectedId(student.studentId)}>
+              return <button key={student.studentId} aria-pressed={selected?.studentId === student.studentId} className={`student-row ${selected?.studentId === student.studentId ? "active" : ""}`} onClick={() => { setSelectedId(student.studentId); if (window.matchMedia("(max-width: 800px)").matches) document.getElementById("student-report")?.scrollIntoView({ block: "start" }); }}>
                 <span className="avatar">{student.name.slice(0,1)}</span><span className="student-meta"><b>{student.name}</b><small>{student.grade} · {student.level} · {student.studentId}</small></span>
                 <span className="latest-score"><b>{score?.total ?? "—"}</b><small>{gaps ? `${gaps}회 미응시` : "전체 응시"} ({attended}/{yearExams.length})</small></span>
               </button>;
@@ -315,15 +317,17 @@ export default function Home() {
 
         {isStudentPanelCollapsed && <button className="student-panel-expand" type="button" aria-label="학생 목록 펼치기" title="학생 목록 펼치기" onClick={() => setIsStudentPanelCollapsed(false)}><span aria-hidden="true">›</span><b>학생 목록</b></button>}
 
-        <div className="report">
-          {!selected ? <section className="empty-report card"><span className="empty-icon">↥</span><p>GET STARTED</p><h2>엑셀 성적표를 먼저 업로드해 주세요</h2><span>같은 이름의 PDF를 이어서 올리면 평균과 백분위까지 연결됩니다.</span><button onClick={() => fileRef.current?.click()}>＋ 성적표 선택</button><small>업로드한 파일은 서버로 전송되지 않고 현재 브라우저에서만 처리됩니다.</small></section> : <>
+        <div className="report" id="student-report">
+          {!hydrated ? <section className="empty-report card" role="status" aria-busy="true"><p>MY LEARNING</p><h2>성적 기록을 불러오고 있어요</h2></section> : !selected ? <section className="empty-report card"><p>MY LEARNING</p><h2>아직 등록된 성적이 없어요</h2><span>엑셀 성적표를 등록해 첫 번째 학습 기록을 시작하세요.</span><button onClick={() => fileRef.current?.click()}>＋ 성적표 선택</button><small>같은 이름의 PDF를 연결하면 평균과 백분위도 확인할 수 있어요.</small></section> : <>
+          <div className="report-heading"><div><p>MY LEARNING JOURNAL <span> / {activeYear}</span></p><h1>나의 학습 기록<span className="heading-period">.</span></h1></div><nav aria-label="성적 바로가기">{!isStudentPanelCollapsed && <a className="mobile-students-link" href="#students">학생 선택 ↗</a>}<a href="#progress">성적 변화 ↗</a><a href="#detail">상세 기록 ↗</a></nav></div>
           <nav className="exam-tabs card" aria-label="시험 선택">{history.map(({ exam, score }) => <button key={exam.id} className={focusedItem?.exam.id === exam.id ? "active" : ""} aria-pressed={focusedItem?.exam.id === exam.id} onClick={() => setSelectedExamId(exam.id)}><b>{exam.label}</b><small>{!score ? "데이터 없음" : exam.pdfFilename ? "XLS + PDF" : "XLS"}</small></button>)}</nav>
 
           <section className="profile card">
-            <div className="profile-main"><span className="profile-avatar">{selected?.name.slice(0,1)}</span><div><button className={`profile-total-button ${trendMetric === "total" ? "active" : ""}`} onClick={() => setTrendMetric("total")}>TOTAL</button><div className="profile-name"><h2>{selected?.name}</h2><span>{selected?.level}</span></div><p>{selected?.grade} · 수험번호 {selected?.studentId}</p></div></div>
+            <div className="profile-main"><div><button aria-pressed={trendMetric === "total"} className={`profile-total-button ${trendMetric === "total" ? "active" : ""}`} onClick={() => setTrendMetric("total")}>TOTAL <span aria-hidden="true">↗</span></button><p className="profile-eyebrow">YOUR SCORE, YOUR STORY</p><div className="profile-name"><h2>{selected?.name}</h2><span>{selected?.level}</span></div><p>{selected?.grade} · 수험번호 {selected?.studentId}</p><a className="profile-detail-link" href="#detail">시험별 기록 살펴보기 <span aria-hidden="true">↗</span></a></div></div>
             <div className="latest-summary"><span>{focusedItem?.exam.label || "선택 시험"}</span><div className="total-line"><b>{focusedScore?.total ?? "—"}<small>/120</small></b>{focusedPrevious && focusedScore ? <Delta value={focusedScore.total - focusedPrevious.total} /> : <span className="delta neutral">비교 데이터 없음</span>}</div>{focusedScore && <ComparisonBar metric={focusedScore.pdfMetrics?.total} score={focusedScore.total} maxScore={120} />}</div>
           </section>
 
+          <div className="comparison-context"><span><i>01</i>{focusedScore ? "영역별로 살펴보기" : "이 시험의 응시 기록이 없습니다"}</span><small>{focusedPrevious && focusedScore ? `변동 기준 · ${history.slice(0, focusedIndex).filter((item) => item.score).at(-1)?.exam.label}` : "비교할 이전 응시 기록이 없습니다"}</small></div>
           <section className="metric-grid">
             {[
               ["listening", "Listening", focusedScore?.listening, focusedPrevious ? (focusedScore?.listening || 0) - focusedPrevious.listening : 0, "blue"],
@@ -343,8 +347,9 @@ export default function Home() {
             </button>
           </section>
 
-          <section className="trend card">
-            <div className="section-title"><div><p>PROGRESS</p><h2>{trendMetric === "campusRank" ? "전국·캠퍼스 석차 변화" : `${activeTrend.label} 성적 변화`}</h2></div><div className="legend">{trendMetric === "campusRank" ? <><span><i className="dot campus"/>캠퍼스 석차</span><span><i className="dot national"/>전국 석차</span></> : <><span><i className="dot total"/>학생점수</span><span><i className="dot average"/>전체평균</span><span><i className="dot top-ten"/>상위 10% 평균</span></>}</div></div>
+          <section className="trend card" id="progress">
+            <div className="section-title"><div><p>02 / PROGRESS</p><h2>{trendMetric === "campusRank" ? "전국·캠퍼스 석차 변화" : `${activeTrend.label} 성적 변화`}</h2></div><div className="legend">{trendMetric === "campusRank" ? <><span><i className="dot campus"/>캠퍼스 석차</span><span><i className="dot national"/>전국 석차</span></> : <><span><i className="dot total"/>학생점수</span><span><i className="dot average"/>전체평균</span><span><i className="dot top-ten"/>상위 10% 평균</span></>}</div></div>
+            <p className="section-note">{activeYear}년 전체 시험 · {trendMetric === "campusRank" ? "백분위는 상위 비율이며, 낮을수록 높은 순위입니다." : `점수 단위: 점 / 만점 ${activeTrend.max}점`} · 변동은 바로 앞 시험 대비</p>
             <div className="horizontal-timeline">
               {history.map(({ exam, score }, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
@@ -361,8 +366,8 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="history card">
-            <div className="section-title"><div><p>DETAIL</p><h2>시험별 상세 기록</h2></div></div>
+          <section className="history card" id="detail">
+            <div className="section-title"><div><p>03 / ARCHIVE</p><h2>시험별 상세 기록</h2></div></div>
             <div className="table-wrap"><table><thead><tr><th>시험명</th><th>Listening</th><th>Grammar</th><th>Reading</th><th>TOTAL</th><th>전국 석차</th><th>캠퍼스 석차</th></tr></thead><tbody>
               {history.map(({exam,score}, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;
@@ -370,6 +375,7 @@ export default function Home() {
               })}
             </tbody></table></div>
           </section>
+          <nav className="report-next" aria-label="다음 확인"><div><b>다른 결과도 살펴보세요</b><span>위의 시험 탭과 영역 버튼으로 비교할 결과를 선택할 수 있어요.</span></div><a href="#progress">성적 변화 다시 보기 ↑</a></nav>
           </>}
         </div>
       </section>
