@@ -154,3 +154,83 @@
   .student-view .section-title h2 { font-size: 23px; }
   .student-view tr { background: var(--paper); }
 }
+
+/* Compact reading scale: roughly 70% of the original desktop visual weight. */
+.student-view .topbar { min-height: 68px; padding-top: 11px; padding-bottom: 11px; }
+.student-view .year-tabs { margin-top: 14px; }
+.student-view .workspace { padding-top: 18px; padding-bottom: 32px; gap: 32px; }
+.student-view .report { gap: 17px; }
+.student-view .report-heading { margin-bottom: 0; }
+.student-view .report-heading p { margin-bottom: 6px; }
+.student-view .report-heading h1 { font-size: 29px; }
+.student-view .exam-tabs { gap: 20px; }
+.student-view .exam-tabs button { padding-top: 7px; padding-bottom: 10px; }
+.student-view .profile-main { padding: 16px 24px; }
+.student-view .profile-total-button { margin-bottom: 6px; }
+.student-view .profile-main .profile-eyebrow { margin-bottom: 4px; }
+.student-view .profile-main p:not(.profile-eyebrow) { margin-top: 6px; }
+.student-view .profile-main .profile-detail-link { margin-top: 8px; }
+.student-view .profile-name h2 { font-size: 30px; }
+.student-view .profile-main .profile-detail-link { margin-top: 15px; padding-top: 9px; }
+.student-view .latest-summary { padding: 22px 28px; }
+.student-view .total-line { margin-top: 5px; }
+.student-view .total-line>b { font-size: clamp(49px,4.5vw,65px); }
+.student-view .total-line b small { font-size: 16px; }
+.student-view .latest-summary .score-comparison { margin-top: 74px; }
+.student-view .latest-summary .score-comparison.pending { margin-top: 12px; }
+.student-view .latest-summary .score-comparison.pending small { padding-top: 12px; }
+.student-view .comparison-context { margin-top: 12px; }
+.student-view .comparison-context>span { font-size: 18px; }
+.student-view .metric-grid { padding: 0 22px; }
+.student-view .metric-card { min-height: 122px; padding: 15px 10px 20px; grid-template-columns: 170px minmax(0,1fr); gap: 0 22px; }
+.student-view .metric-card.active::before { left: -22px; }
+.student-view .metric-card>div:first-child>span { font-size: 15px; }
+.student-view .metric-card>div:first-child>b { font-size: 28px; }
+.student-view .metric-card>.delta { margin-top: 5px; }
+.student-view .metric-card .score-comparison { margin-top: 75px; }
+.student-view .rank-card { min-height: 0; padding-top: 18px; padding-bottom: 18px; grid-template-columns: 100px minmax(0,1fr); }
+.student-view .rank-summary>b { font-size: 24px; }
+.student-view .trend,.student-view .history { margin-top: 10px; }
+.student-view .section-title { padding: 22px 26px 10px; }
+.student-view .section-title p { margin-bottom: 5px; }
+.student-view .section-title h2 { font-size: 21px; }
+.student-view .section-note { margin: 0 26px 8px; }
+.student-view .horizontal-timeline { margin: 0 26px 8px; }
+.student-view .horizontal-exam { padding: 19px 0; }
+.student-view .history .section-title { padding-bottom: 15px; }
+.student-view .student-row { min-height: 68px; padding-top: 9px; padding-bottom: 9px; }
+.student-view .student-list { max-height: calc(100vh - 230px); }
+.student-view .empty-report { min-height: 350px; padding: 34px; }
+.student-view .empty-report h2 { font-size: 26px; }
+
+@media(max-width:1100px) {
+  .student-view .metric-card { grid-template-columns: 140px minmax(0,1fr); }
+  .student-view .rank-card { grid-template-columns: 1fr; }
+}
+@media(max-width:800px) {
+  .student-view .workspace { display: flex; gap: 24px; }
+  .student-view .report-heading h1 { font-size: 29px; }
+  .student-view .profile { grid-template-columns: minmax(210px,.85fr) minmax(0,1.3fr); }
+  .student-view .profile-main { padding: 20px; }
+  .student-view .profile-main .profile-detail-link { display: flex; }
+  .student-view .rank-card { grid-template-columns: 85px minmax(0,1fr); }
+  .student-view .student-list { max-height: 320px; }
+}
+@media(max-width:600px) {
+  .student-view .topbar { min-height: 70px; }
+  .student-view .report-heading h1 { font-size: 28px; }
+  .student-view .profile { grid-template-columns: 1fr; }
+  .student-view .profile-main { padding: 19px 20px; }
+  .student-view .profile-total-button { margin: 0; }
+  .student-view .profile-main .profile-detail-link { display: none; }
+  .student-view .latest-summary { padding: 21px 20px; }
+  .student-view .total-line>b { font-size: 54px; }
+  .student-view .comparison-context { align-items: flex-start; }
+  .student-view .metric-card { grid-template-columns: 1fr auto; min-height: 0; padding: 17px 0 23px; }
+  .student-view .metric-card>.delta { margin: 0; }
+  .student-view .metric-card .score-comparison { margin-top: 76px; }
+  .student-view .rank-card { display: block; }
+  .student-view .section-title { padding: 21px 20px 10px; }
+  .student-view .section-note { margin: 0 20px 8px; }
+  .student-view .horizontal-timeline { margin: 0 20px 8px; }
+}
