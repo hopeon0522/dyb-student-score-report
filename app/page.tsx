@@ -349,7 +349,7 @@ export default function Home() {
 
           <section className="trend card" id="progress">
             <div className="section-title"><div><p>02 / PROGRESS</p><h2>{trendMetric === "campusRank" ? "전국·캠퍼스 석차 변화" : `${activeTrend.label} 성적 변화`}</h2></div><div className="legend">{trendMetric === "campusRank" ? <><span><i className="dot campus"/>캠퍼스 석차</span><span><i className="dot national"/>전국 석차</span></> : <><span><i className="dot total"/>학생점수</span><span><i className="dot average"/>전체평균</span><span><i className="dot top-ten"/>상위 10% 평균</span></>}</div></div>
-            <p className="section-note">{activeYear}년 전체 시험 · {trendMetric === "campusRank" ? "백분위는 상위 비율이며, 낮을수록 높은 순위입니다." : `점수 단위: 점 / 만점 ${activeTrend.max}점`} · 변동은 바로 앞 시험 대비</p>
+            <p className="section-note">{activeYear}년 시험 · {trendMetric === "campusRank" ? "백분위가 낮을수록 상위" : `${activeTrend.max}점 만점`} · 직전 시험 대비 변동</p>
             <div className="horizontal-timeline">
               {history.map(({ exam, score }, index) => {
                 const previousScore = index > 0 ? history[index - 1].score : undefined;

@@ -182,21 +182,35 @@
 .student-view .comparison-context { margin-top: 12px; }
 .student-view .comparison-context>span { font-size: 18px; }
 .student-view .metric-grid { padding: 0 22px; }
-.student-view .metric-card { min-height: 122px; padding: 15px 10px 20px; grid-template-columns: 170px minmax(0,1fr); gap: 0 22px; }
+.student-view .metric-card { min-height: 0; padding: 12px 10px 12px; grid-template-columns: 170px minmax(0,1fr); gap: 0 22px; }
 .student-view .metric-card.active::before { left: -22px; }
 .student-view .metric-card>div:first-child>span { font-size: 15px; }
 .student-view .metric-card>div:first-child>b { font-size: 28px; }
 .student-view .metric-card>.delta { margin-top: 5px; }
-.student-view .metric-card .score-comparison { margin-top: 75px; }
+.student-view .metric-card .score-comparison { margin-top: 60px; }
+.student-view .metric-card .comparison-marker.average,
+.student-view .metric-card .comparison-marker.top-ten { bottom: 18px; }
 .student-view .rank-card { min-height: 0; padding-top: 18px; padding-bottom: 18px; grid-template-columns: 100px minmax(0,1fr); }
 .student-view .rank-summary>b { font-size: 24px; }
 .student-view .trend,.student-view .history { margin-top: 10px; }
-.student-view .section-title { padding: 22px 26px 10px; }
+.student-view .trend { padding-bottom: 8px; }
+.student-view .section-title { padding: 17px 26px 8px; }
 .student-view .section-title p { margin-bottom: 5px; }
 .student-view .section-title h2 { font-size: 21px; }
 .student-view .section-note { margin: 0 26px 8px; }
 .student-view .horizontal-timeline { margin: 0 26px 8px; }
-.student-view .horizontal-exam { padding: 19px 0; }
+.student-view .horizontal-exam { padding: 13px 0; }
+.student-view .score-progress-single { padding-top: 72px; }
+.student-view .score-track-marker.average,
+.student-view .score-track-marker.top-ten { display: grid; grid-template-columns: max-content max-content; align-items: baseline; column-gap: 5px; }
+.student-view .score-track-marker.average>em,
+.student-view .score-track-marker.top-ten>em { margin-top: 0; }
+.student-view .score-track-marker.average::after,
+.student-view .score-track-marker.top-ten::after { grid-column: 1/-1; justify-self: center; margin-top: 4px; }
+.student-view .score-track-marker.top-ten { top: 34px; transform: translateX(-100%); }
+.student-view .score-track-marker.top-ten::after { justify-self: end; }
+.student-view .score-track-marker.student { top: 93px; }
+.student-view .score-axis { margin-top: 28px; }
 .student-view .history .section-title { padding-bottom: 15px; }
 .student-view .student-row { min-height: 68px; padding-top: 9px; padding-bottom: 9px; }
 .student-view .student-list { max-height: calc(100vh - 230px); }
@@ -226,11 +240,13 @@
   .student-view .latest-summary { padding: 21px 20px; }
   .student-view .total-line>b { font-size: 54px; }
   .student-view .comparison-context { align-items: flex-start; }
-  .student-view .metric-card { grid-template-columns: 1fr auto; min-height: 0; padding: 17px 0 23px; }
-  .student-view .metric-card>.delta { margin: 0; }
-  .student-view .metric-card .score-comparison { margin-top: 76px; }
+  .student-view .metric-card { grid-template-columns: 1fr auto; min-height: 0; padding: 12px 0 14px; }
+  .student-view .metric-card>.delta { grid-column: 1; position: absolute; left: 0; top: 83px; margin: 0; }
+  .student-view .metric-card .score-comparison { margin-top: 40px; }
+  .student-view .metric-card .comparison-marker.average { bottom: 70px; }
+  .student-view .metric-card .comparison-marker.top-ten { bottom: 18px; }
   .student-view .rank-card { display: block; }
-  .student-view .section-title { padding: 21px 20px 10px; }
+  .student-view .section-title { padding: 16px 20px 8px; gap: 8px; }
   .student-view .section-note { margin: 0 20px 8px; }
   .student-view .horizontal-timeline { margin: 0 20px 8px; }
 }
